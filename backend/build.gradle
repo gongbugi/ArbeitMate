@@ -9,7 +9,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(17)
 	}
 }
 
@@ -30,6 +30,8 @@ dependencies {
 
 	// 쿼리 파라미터 로그 남기기
 	implementation("com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.0")
+	// 비밀번호 암호화
+	implementation 'org.springframework.boot:spring-boot-starter-security'
 
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.h2database:h2' // test용 로컬 db
