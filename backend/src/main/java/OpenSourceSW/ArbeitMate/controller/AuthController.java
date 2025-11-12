@@ -3,13 +3,10 @@ package OpenSourceSW.ArbeitMate.controller;
 import OpenSourceSW.ArbeitMate.dto.request.LoginWithIdTokenRequest;
 import OpenSourceSW.ArbeitMate.dto.request.SignupEmailRequest;
 import OpenSourceSW.ArbeitMate.dto.response.MemberResponse;
-import OpenSourceSW.ArbeitMate.security.AuthPrincipal;
 import OpenSourceSW.ArbeitMate.service.MemberService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
