@@ -24,9 +24,9 @@ public class Member {
     private UUID id;
 
     @Column(nullable = false, unique = true) private String email;
-    @Column(nullable = false) private String password; // 해시된 값 저장
+    @Column(name="firebase_uid", unique = true) private String firebaseUid;
+
     @Column(nullable = false) private String name;
-    @Column(nullable = false, unique = true) private String phone;
 
     @Column(nullable = false) private LocalDateTime createdAt;
 
@@ -39,12 +39,10 @@ public class Member {
     }
 
     //== 생성 메서드 ==//
-    public static Member create(String email, String password, String name, String phone) {
+    public static Member create(String email, String name) {
         Member m = new Member();
         m.email = email;
-        m.password = password;
         m.name = name;
-        m.phone = phone;
         return m;
     }
 
@@ -54,5 +52,14 @@ public class Member {
             this.companyMemberships.add(cm);
             cm.setMember(this);
         }
+    }
+
+    //== 비즈니스 로직==//
+    public void linkFirebaseUid(String firebaseUid) {
+        this.firebaseUid = firebaseUid;
+    }
+
+    public void updateProfile(String name) {
+        if(name != null && !name.isBlank()) this.name = name;
     }
 }
