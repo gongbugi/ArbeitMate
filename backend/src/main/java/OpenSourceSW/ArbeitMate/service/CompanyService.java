@@ -6,8 +6,10 @@ import OpenSourceSW.ArbeitMate.domain.Member;
 import OpenSourceSW.ArbeitMate.domain.enums.MembershipRole;
 import OpenSourceSW.ArbeitMate.dto.request.CreateCompanyRequest;
 import OpenSourceSW.ArbeitMate.dto.request.ParticipateCompanyRequest;
+import OpenSourceSW.ArbeitMate.dto.request.UpdateCompanyRequest;
 import OpenSourceSW.ArbeitMate.dto.response.CreateCompanyResponse;
 import OpenSourceSW.ArbeitMate.dto.response.ParticipateCompanyResponse;
+import OpenSourceSW.ArbeitMate.dto.response.UpdateCompanyResponse;
 import OpenSourceSW.ArbeitMate.infra.InviteCodeGenerator;
 import OpenSourceSW.ArbeitMate.repository.CompanyRepository;
 import OpenSourceSW.ArbeitMate.repository.MemberRepository;
@@ -94,5 +96,56 @@ public class CompanyService {
     protected boolean isAlreadyJoined(Member member, Company company) {
         return company.getCompanyMembers().stream()
                 .anyMatch(cm -> cm.getMember().getId().equals(member.getId()));
+    }
+
+    /**
+     *  회사 기본 정보 수정
+     */
+    @Transactional
+    public UpdateCompanyResponse updateCompany(UUID memberId, UUID companyId, UpdateCompanyRequest req) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateOwner(memberId, company);
+
+        // 변경 감지를 통해 저장
+        company.updateInfo(req.getName(), req.getAddress());
+
+        return UpdateCompanyResponse.from(company);
+    }
+
+    /**
+     * 초대코드 재생성
+     */
+    @Transactional
+    public UpdateCompanyResponse regenerateInviteCode(UUID memberId, UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateOwner(memberId, company);
+
+        String newCode = getUniqueInviteCode();
+        company.applyInviteCode(newCode);
+
+        return UpdateCompanyResponse.from(company);
+    }
+
+    /**
+     * 회사 삭제
+     */
+    @Transactional
+    public void deleteCompany(UUID memberId, UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateOwner(memberId, company);
+
+        companyRepository.delete(company); // 하위 엔티티는 cascade + orphanRemoval로 함께 자동으로 삭제
+    }
+
+    private void validateOwner(UUID memberId, Company company) {
+        if (!company.getOwner().getId().equals(memberId)) {
+            throw new IllegalStateException("해당 매장의 사장만 이 작업을 수행할 수 있습니다.");
+        }
     }
 }

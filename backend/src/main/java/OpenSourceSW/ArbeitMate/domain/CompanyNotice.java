@@ -55,17 +55,18 @@ public class CompanyNotice {
 
     // ===== 생성 메서드 =====
     public static CompanyNotice create(Company company, Member author, String title, String content) {
-        if (company == null) throw new IllegalArgumentException("company must not be null");
-        if (author == null)  throw new IllegalArgumentException("author must not be null");
-        if (title == null || title.isBlank())   throw new IllegalArgumentException("title must not be blank");
-        if (content == null || content.isBlank()) throw new IllegalArgumentException("content must not be blank");
-
         CompanyNotice n = new CompanyNotice();
-        n.company = company;
         n.createdBy = author;
         n.title = title;
         n.content = content;
+
+        company.addNotice(n);
         return n;
+    }
+
+    //== 연관관계 편의 메서드 ==//
+    public void setCompany(Company company) {
+        this.company = company;
     }
 
     // ===== 비즈니스 로직 =====

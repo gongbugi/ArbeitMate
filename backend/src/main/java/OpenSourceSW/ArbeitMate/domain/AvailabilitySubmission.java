@@ -38,8 +38,16 @@ public class AvailabilitySubmission {
     //== 생성 메서드 ==//
     public static AvailabilitySubmission create(Company c, SchedulePeriod p, Member m) {
         AvailabilitySubmission s = new AvailabilitySubmission();
-        s.company = c; s.period = p; s.member = m;
+        s.period = p;
+        s.member = m;
         s.submittedAt = LocalDateTime.now();
+
+        c.addAvailabilitySubmission(s);
         return s;
+    }
+
+    //== 연관관계 편의 메서드 ==//
+    public void setCompany(Company company) {
+        this.company = company;
     }
 }

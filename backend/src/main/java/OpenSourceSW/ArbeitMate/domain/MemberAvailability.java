@@ -44,9 +44,16 @@ public class MemberAvailability {
                                             LocalTime start, LocalTime end,
                                             LocalDate from, LocalDate to) {
         MemberAvailability a = new MemberAvailability();
-        a.company = c; a.member = m;
+        a.member = m;
         a.dow = dow; a.startTime = start; a.endTime = end;
         a.effectiveFrom = from; a.effectiveTo = to;
+
+        c.addMemberAvailability(a);
         return a;
+    }
+
+    //== 연관관계 편의 메서드 ==//
+    public void setCompany(Company company) {
+        this.company = company;
     }
 }
