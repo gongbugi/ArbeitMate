@@ -5,6 +5,8 @@ import OpenSourceSW.ArbeitMate.domain.CompanyMember;
 import OpenSourceSW.ArbeitMate.domain.Member;
 import OpenSourceSW.ArbeitMate.domain.enums.MembershipRole;
 import OpenSourceSW.ArbeitMate.dto.request.ParticipateCompanyRequest;
+import OpenSourceSW.ArbeitMate.dto.request.UpdateCompanyRequest;
+import OpenSourceSW.ArbeitMate.dto.response.UpdateCompanyResponse;
 import OpenSourceSW.ArbeitMate.repository.CompanyRepository;
 import OpenSourceSW.ArbeitMate.repository.MemberRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,5 +106,122 @@ class CompanyServiceTest {
 
         // then
         assertThat(res.getCompanyId()).isEqualTo(company.getId());
+    }
+
+    @Test
+    @DisplayName("사장인 회원이 회사 정보 수정 시 정상 동작")
+    void updateCompany_owner_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시 구로구", "INVITE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        UpdateCompanyRequest req = new UpdateCompanyRequest();
+        req.setName("카페 A");
+        req.setAddress("서울시 강남구");
+
+        // when
+        UpdateCompanyResponse res = companyService.updateCompany(ownerId, companyId, req);
+
+        // then
+        assertThat(company.getName()).isEqualTo("카페 A");
+        assertThat(company.getAddress()).isEqualTo("서울시 강남구");
+        assertThat(res.getCompanyId()).isEqualTo(companyId);
+    }
+
+    @Test
+    @DisplayName("사장이 아닌 회원이 회사 정보 수정 시 예외 발생")
+    void updateCompany_nonOwner_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID otherMemberId = UUID.randomUUID(); // 사장 아님
+
+        Company company = newCompany("카페 A", owner, "서울시 구로구", "INVITE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        UpdateCompanyRequest req = new UpdateCompanyRequest();
+        req.setName("카페 B");
+        req.setAddress("경기도 수원시");
+
+        // then
+        assertThatThrownBy(() -> companyService.updateCompany(otherMemberId, companyId, req))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("사장이 아닌 회원이 초대코드 재생성 시 예외 발생")
+    void regenerateInviteCode_nonOwner_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID otherMemberId = UUID.randomUUID();
+
+        Company company = newCompany("카페 A", owner, "서울시 구로구", "OLD_CODE");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // then
+        assertThatThrownBy(() -> companyService.regenerateInviteCode(otherMemberId, companyId))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    @DisplayName("사장이 회사 삭제 시 정상 동작")
+    void deleteCompany_owner_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시 구로구", "INVITE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // when
+        companyService.deleteCompany(ownerId, companyId);
+
+        // then
+        verify(companyRepository, times(1)).delete(company);
+    }
+
+    @Test
+    @DisplayName("사장이 아닌 회원이 회사 삭제 시 예외 발생")
+    void deleteCompany_nonOwner_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID otherMemberId = UUID.randomUUID();
+
+        Company company = newCompany("카페 A", owner, "서울시 구로구", "INVITE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // when & then
+        assertThatThrownBy(() -> companyService.deleteCompany(otherMemberId, companyId))
+                .isInstanceOf(IllegalStateException.class);
+
+        verify(companyRepository, never()).delete(any());
     }
 }
