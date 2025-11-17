@@ -27,7 +27,7 @@ public class CompanyRole {
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "company_id", nullable = false)
     private Company company;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String name; // 예: 홀, 주방
 
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)

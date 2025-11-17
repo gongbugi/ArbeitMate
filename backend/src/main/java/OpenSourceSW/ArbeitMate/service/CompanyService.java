@@ -2,15 +2,14 @@ package OpenSourceSW.ArbeitMate.service;
 
 import OpenSourceSW.ArbeitMate.domain.Company;
 import OpenSourceSW.ArbeitMate.domain.CompanyMember;
+import OpenSourceSW.ArbeitMate.domain.CompanyRole;
 import OpenSourceSW.ArbeitMate.domain.Member;
 import OpenSourceSW.ArbeitMate.domain.enums.MembershipRole;
+import OpenSourceSW.ArbeitMate.dto.request.CreateRoleRequest;
 import OpenSourceSW.ArbeitMate.dto.request.CreateCompanyRequest;
 import OpenSourceSW.ArbeitMate.dto.request.ParticipateCompanyRequest;
 import OpenSourceSW.ArbeitMate.dto.request.UpdateCompanyRequest;
-import OpenSourceSW.ArbeitMate.dto.response.CompanyWorkerResponse;
-import OpenSourceSW.ArbeitMate.dto.response.CreateCompanyResponse;
-import OpenSourceSW.ArbeitMate.dto.response.ParticipateCompanyResponse;
-import OpenSourceSW.ArbeitMate.dto.response.UpdateCompanyResponse;
+import OpenSourceSW.ArbeitMate.dto.response.*;
 import OpenSourceSW.ArbeitMate.infra.InviteCodeGenerator;
 import OpenSourceSW.ArbeitMate.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -180,6 +178,26 @@ public class CompanyService {
         Member member = target.getMember();
         availabilitySubmissionRepository.deleteByCompanyAndMember(company, member);
         company.removeCompanyMember(target); // 변경 감지를 통해 저장
+    }
+
+    /**
+     * 역할군 추가
+     */
+    @Transactional
+    public CompanyRoleResponse createRole(UUID ownerId, UUID companyId, CreateRoleRequest req) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateOwner(ownerId, company);
+
+        if(companyRoleRepository.existsByCompanyIdAndName(companyId, req.getName())) {
+            throw new IllegalStateException("이미 이 매장에 존재하는 역할 이름입니다.");
+        }
+
+        CompanyRole role = CompanyRole.create(company, req.getName());
+        companyRoleRepository.save(role);
+
+        return CompanyRoleResponse.from(role);
     }
 
     // 중복 확인

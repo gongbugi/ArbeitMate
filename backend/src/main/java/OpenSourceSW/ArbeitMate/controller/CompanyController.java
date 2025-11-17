@@ -1,12 +1,10 @@
 package OpenSourceSW.ArbeitMate.controller;
 
 import OpenSourceSW.ArbeitMate.dto.request.CreateCompanyRequest;
+import OpenSourceSW.ArbeitMate.dto.request.CreateRoleRequest;
 import OpenSourceSW.ArbeitMate.dto.request.ParticipateCompanyRequest;
 import OpenSourceSW.ArbeitMate.dto.request.UpdateCompanyRequest;
-import OpenSourceSW.ArbeitMate.dto.response.CompanyWorkerResponse;
-import OpenSourceSW.ArbeitMate.dto.response.CreateCompanyResponse;
-import OpenSourceSW.ArbeitMate.dto.response.ParticipateCompanyResponse;
-import OpenSourceSW.ArbeitMate.dto.response.UpdateCompanyResponse;
+import OpenSourceSW.ArbeitMate.dto.response.*;
 import OpenSourceSW.ArbeitMate.security.AuthPrincipal;
 import OpenSourceSW.ArbeitMate.service.CompanyService;
 import jakarta.validation.Valid;
@@ -105,5 +103,17 @@ public class CompanyController {
             @PathVariable UUID companyMemberId) {
         companyService.removeWorker(principal.memberId(), companyId, companyMemberId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 회사 역할군 추가 (사장 전용)
+     */
+    @PostMapping("/{companyId}/roles")
+    public ResponseEntity<CompanyRoleResponse> createRole(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @Valid @RequestBody CreateRoleRequest req) {
+        var res = companyService.createRole(principal.memberId(), companyId, req);
+        return ResponseEntity.ok(res);
     }
 }
