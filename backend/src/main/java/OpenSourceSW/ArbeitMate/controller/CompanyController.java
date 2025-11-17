@@ -116,4 +116,15 @@ public class CompanyController {
         var res = companyService.createRole(principal.memberId(), companyId, req);
         return ResponseEntity.ok(res);
     }
+
+    /**
+     * 회사 역할군 목록 조회
+     */
+    @GetMapping("/{companyId}/roles")
+    public ResponseEntity<List<CompanyRoleResponse>> listRoles(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId) {
+        var res = companyService.listRoles(principal.memberId(), companyId);
+        return ResponseEntity.ok(res);
+    }
 }

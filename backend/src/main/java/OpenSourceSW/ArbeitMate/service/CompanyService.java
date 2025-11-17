@@ -200,6 +200,20 @@ public class CompanyService {
         return CompanyRoleResponse.from(role);
     }
 
+    /**
+     * 역할군 목록 조회
+     */
+    public List<CompanyRoleResponse> listRoles(UUID memberId, UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateMembersBelongToCompany(memberId, company);
+
+        return company.getRoles().stream()
+                .map(CompanyRoleResponse::from)
+                .toList();
+    }
+
     // 중복 확인
     protected boolean isAlreadyJoined(Member member, Company company) {
         return company.getCompanyMembers().stream()
@@ -209,6 +223,13 @@ public class CompanyService {
     private void validateOwner(UUID memberId, Company company) {
         if (!company.getOwner().getId().equals(memberId)) {
             throw new IllegalStateException("해당 매장의 사장만 이 작업을 수행할 수 있습니다.");
+        }
+    }
+    // 회사 소속 확인
+    private void validateMembersBelongToCompany(UUID memberId, Company company) {
+        if(company.getCompanyMembers().stream()
+                .noneMatch(cm -> cm.getMember().getId().equals(memberId))) {
+            throw new IllegalStateException("해당 매장에 속한 멤버가 아닙니다.");
         }
     }
 }
