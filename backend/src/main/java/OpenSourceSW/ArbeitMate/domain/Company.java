@@ -172,4 +172,11 @@ public class Company {
             this.address = address;
         }
     }
+
+    /**
+     * 직원 제외
+     */
+    public void removeCompanyMember(CompanyMember cm) {
+        this.companyMembers.remove(cm);
+    }
 }
