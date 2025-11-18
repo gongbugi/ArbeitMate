@@ -37,7 +37,7 @@ jobs:
         run: chmod +x backend/gradlew
 
       - name: Build with Gradle
-        run: ./backend/gradlew build -x test
+        run: ./gradlew build -x test
         working-directory: ./backend
 
       - name: Set up Docker Buildx
