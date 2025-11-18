@@ -1,9 +1,6 @@
 package OpenSourceSW.ArbeitMate.controller;
 
-import OpenSourceSW.ArbeitMate.dto.request.CreateCompanyRequest;
-import OpenSourceSW.ArbeitMate.dto.request.CreateRoleRequest;
-import OpenSourceSW.ArbeitMate.dto.request.ParticipateCompanyRequest;
-import OpenSourceSW.ArbeitMate.dto.request.UpdateCompanyRequest;
+import OpenSourceSW.ArbeitMate.dto.request.*;
 import OpenSourceSW.ArbeitMate.dto.response.*;
 import OpenSourceSW.ArbeitMate.security.AuthPrincipal;
 import OpenSourceSW.ArbeitMate.service.CompanyService;
@@ -52,7 +49,7 @@ public class CompanyController {
     public ResponseEntity<UpdateCompanyResponse> updateCompany(
             @AuthenticationPrincipal AuthPrincipal principal,
             @PathVariable UUID companyId,
-            @RequestBody UpdateCompanyRequest req) {
+            @Valid @RequestBody UpdateCompanyRequest req) {
 
         var res = companyService.updateCompany(principal.memberId(), companyId, req);
         return ResponseEntity.ok(res);
@@ -126,5 +123,18 @@ public class CompanyController {
             @PathVariable UUID companyId) {
         var res = companyService.listRoles(principal.memberId(), companyId);
         return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 직원에게 역할군 부여
+     */
+    @PostMapping("/{companyId}/workers/{companyMemberId}/roles")
+    public ResponseEntity<Void> assignRoleToWorker(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID companyMemberId,
+            @Valid @RequestBody AssignRoleRequest req) {
+        companyService.assignRoleToWorker(principal.memberId(), companyId, companyMemberId, req.getRoleId());
+        return ResponseEntity.status(500).build();
     }
 }

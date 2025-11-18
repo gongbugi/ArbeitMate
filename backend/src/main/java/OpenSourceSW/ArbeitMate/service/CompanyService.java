@@ -1,9 +1,6 @@
 package OpenSourceSW.ArbeitMate.service;
 
-import OpenSourceSW.ArbeitMate.domain.Company;
-import OpenSourceSW.ArbeitMate.domain.CompanyMember;
-import OpenSourceSW.ArbeitMate.domain.CompanyRole;
-import OpenSourceSW.ArbeitMate.domain.Member;
+import OpenSourceSW.ArbeitMate.domain.*;
 import OpenSourceSW.ArbeitMate.domain.enums.MembershipRole;
 import OpenSourceSW.ArbeitMate.dto.request.CreateRoleRequest;
 import OpenSourceSW.ArbeitMate.dto.request.CreateCompanyRequest;
@@ -212,6 +209,36 @@ public class CompanyService {
         return company.getRoles().stream()
                 .map(CompanyRoleResponse::from)
                 .toList();
+    }
+
+    /**
+     * 직원에게 역할군 부여
+     */
+    @Transactional
+    public void assignRoleToWorker(UUID ownerId, UUID companyId, UUID companyMemberId, UUID roleId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateOwner(ownerId, company);
+
+        // 회사 내 직원 찾기
+        CompanyMember cm = company.getCompanyMembers().stream()
+                .filter(m -> m.getId().equals(companyMemberId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("CompanyMember not found"));
+
+        // 회사 내 역할군 찾기
+        CompanyRole role = companyRoleRepository.findById(roleId)
+                .orElseThrow(() -> new IllegalArgumentException("Role not found"));
+        if(!role.getCompany().getId().equals(company.getId())) {
+            throw new IllegalStateException("해당 매장의 역할군이 아닙니다.");
+        }
+
+        boolean exists = companyMemberRoleRepository.existsByCompanyAndMemberAndRole(company, cm.getMember(), role);
+
+        // 엔티티 생성
+        CompanyMemberRole cmr = CompanyMemberRole.link(company, cm.getMember(), role);
+        companyMemberRoleRepository.save(cmr);
     }
 
     // 중복 확인
