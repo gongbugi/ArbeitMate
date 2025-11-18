@@ -29,8 +29,8 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-            key: ${{ runner.os }}-gradle-${{ hashFiles('backend/build.gradle', 'backend/gradle-wrapper.properties') }}
-            restore-keys: |
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend/build.gradle', 'backend/gradle-wrapper.properties') }}
+          restore-keys: |
               ${{ runner.os }}-gradle-
 
       - name: Make gradlew executable
