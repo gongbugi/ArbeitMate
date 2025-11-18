@@ -73,13 +73,14 @@ public class SwapRequest {
     public static SwapRequest createGiveAwayOpen(Company company, ScheduleAssignment from,
                                                  Member requester) {
         SwapRequest r = new SwapRequest();
-        r.company = company;
         r.fromAssignment = from;
         r.toAssignment = null;
         r.type = SwapType.GIVE_AWAY;
         r.status = SwapStatus.OPEN;
         r.createdBy = requester;
         r.proposedTo = null; // 공개 요청 (전체 대상)
+
+        company.addSwapRequest(r);
         return r;
     }
 
@@ -87,13 +88,14 @@ public class SwapRequest {
     public static SwapRequest createGiveAway(Company company, ScheduleAssignment from,
                                              Member requester, Member proposedTo) {
         SwapRequest r = new SwapRequest();
-        r.company = company;
         r.fromAssignment = from;
         r.toAssignment = null;
         r.type = SwapType.GIVE_AWAY;
         r.status = SwapStatus.OPEN;
         r.createdBy = requester;
         r.proposedTo = proposedTo;
+
+        company.addSwapRequest(r);
         return r;
     }
 
@@ -101,13 +103,14 @@ public class SwapRequest {
     public static SwapRequest createDirectSwap(Company company, ScheduleAssignment from, ScheduleAssignment to,
                                                Member requester, Member proposedTo) {
         SwapRequest r = new SwapRequest();
-        r.company = company;
         r.fromAssignment = from;
         r.toAssignment = to;
         r.type = SwapType.DIRECT_SWAP;
         r.status = SwapStatus.OPEN;
         r.createdBy = requester;
         r.proposedTo = proposedTo;
+
+        company.addSwapRequest(r);
         return r;
     }
 
@@ -145,6 +148,11 @@ public class SwapRequest {
             return proposedTo.getId().equals(m.getId());
         }
         return assigneeId.equals(m.getId());
+    }
+
+    //== 연관관계 편의 메서드 ==//
+    public void setCompany(Company company) {
+        this.company = company;
     }
 
     //== 비즈니스 로직 ==//

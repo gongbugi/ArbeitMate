@@ -29,7 +29,7 @@ public class Company {
     private Member owner;
 
     // 주소(단일 문자열로 작성)
-    @Column(nullable = false, unique = true) private String address;
+    @Column(nullable = false) private String address;
 
     @Column(nullable = false, unique = true) private String inviteCode;
 
@@ -52,6 +52,18 @@ public class Company {
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Schedule> schedules = new ArrayList<>();
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AvailabilitySubmission> availabilitySubmissions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<MemberAvailability> memberAvailabilities = new ArrayList<>();
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CompanyNotice> notices = new ArrayList<>();
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<SwapRequest> swapRequests = new ArrayList<>();
 
     @PrePersist
     private void prePersist() {
@@ -107,6 +119,34 @@ public class Company {
         }
     }
 
+    public void addAvailabilitySubmission(AvailabilitySubmission sub) {
+        if (!this.availabilitySubmissions.contains(sub)) {
+            this.availabilitySubmissions.add(sub);
+            sub.setCompany(this);
+        }
+    }
+
+    public void addMemberAvailability(MemberAvailability ma) {
+        if (!this.memberAvailabilities.contains(ma)) {
+            this.memberAvailabilities.add(ma);
+            ma.setCompany(this);
+        }
+    }
+
+    public void addNotice(CompanyNotice notice) {
+        if (!this.notices.contains(notice)) {
+            this.notices.add(notice);
+            notice.setCompany(this);
+        }
+    }
+
+    public void addSwapRequest(SwapRequest swapRequest) {
+        if (!this.swapRequests.contains(swapRequest)) {
+            this.swapRequests.add(swapRequest);
+            swapRequest.setCompany(this);
+        }
+    }
+
     //== 비즈니스 로직 ==//
     /**
      * 초대코드 적용 (초대코드는 Service 레이어에서 생성)
@@ -117,5 +157,19 @@ public class Company {
         }
         this.inviteCode = newCode;
         this.inviteCodeGeneratedAt = LocalDateTime.now();
+    }
+
+
+    /**
+     * 회사 기본 정보 수정 (이름/주소)
+     * name, addressd에 null/blank가 들어오면 그대로 유지
+     */
+    public void updateInfo(String name, String address) {
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+        if (address != null && !address.isBlank()) {
+            this.address = address;
+        }
     }
 }
