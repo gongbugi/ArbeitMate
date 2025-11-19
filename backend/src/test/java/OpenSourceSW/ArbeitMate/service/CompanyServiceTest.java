@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -485,7 +486,9 @@ class CompanyServiceTest {
 
         // 역할 생성
         CompanyRole role = CompanyRole.create(company, "홀");
+        List<UUID> roleIds = new ArrayList<>();
         UUID roleId = UUID.randomUUID();
+        roleIds.add(roleId);
         ReflectionTestUtils.setField(role, "id", roleId);
 
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
@@ -494,7 +497,7 @@ class CompanyServiceTest {
                 .thenReturn(false);
 
         // when
-        companyService.assignRoleToWorker(ownerId, companyId, workerCmId, roleId);
+        companyService.assignRoleToWorker(ownerId, companyId, workerCmId, roleIds);
 
         // then
         verify(companyMemberRoleRepository, times(1))
@@ -524,8 +527,11 @@ class CompanyServiceTest {
 
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
 
+        List<UUID> roleIds = new ArrayList<>();
+        roleIds.add(UUID.randomUUID());
+
         // when & then
-        assertThatThrownBy(() -> companyService.assignRoleToWorker(otherMemberId, companyId, workerCmId, UUID.randomUUID()))
+        assertThatThrownBy(() -> companyService.assignRoleToWorker(otherMemberId, companyId, workerCmId, roleIds))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(companyMemberRoleRepository, never()).save(any());
@@ -556,14 +562,16 @@ class CompanyServiceTest {
 
         // role 은 company2 소속
         CompanyRole otherRole = CompanyRole.create(company2, "홀");
+        List<UUID> roleIds = new ArrayList<>();
         UUID roleId = UUID.randomUUID();
+        roleIds.add(roleId);
         ReflectionTestUtils.setField(otherRole, "id", roleId);
 
         when(companyRepository.findById(companyId1)).thenReturn(Optional.of(company1));
         when(companyRoleRepository.findById(roleId)).thenReturn(Optional.of(otherRole));
 
         // when & then
-        assertThatThrownBy(() -> companyService.assignRoleToWorker(ownerId, companyId1, workerCmId, roleId))
+        assertThatThrownBy(() -> companyService.assignRoleToWorker(ownerId, companyId1, workerCmId, roleIds))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(companyMemberRoleRepository, never()).save(any());
@@ -589,7 +597,9 @@ class CompanyServiceTest {
         ReflectionTestUtils.setField(workerCm, "id", workerCmId);
 
         CompanyRole role = CompanyRole.create(company, "홀");
+        List<UUID> roleIds = new ArrayList<>();
         UUID roleId = UUID.randomUUID();
+        roleIds.add(roleId);
         ReflectionTestUtils.setField(role, "id", roleId);
 
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
@@ -598,7 +608,7 @@ class CompanyServiceTest {
                 .thenReturn(true);
 
         // when & then
-        assertThatThrownBy(() -> companyService.assignRoleToWorker(ownerId, companyId, workerCmId, roleId))
+        assertThatThrownBy(() -> companyService.assignRoleToWorker(ownerId, companyId, workerCmId, roleIds))
                 .isInstanceOf(IllegalStateException.class);
 
         verify(companyMemberRoleRepository, never()).save(any());

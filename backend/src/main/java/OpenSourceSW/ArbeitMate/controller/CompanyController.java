@@ -135,7 +135,7 @@ public class CompanyController {
             @PathVariable UUID companyId,
             @PathVariable UUID companyMemberId,
             @Valid @RequestBody AssignRoleRequest req) {
-        companyService.assignRoleToWorker(principal.memberId(), companyId, companyMemberId, req.getRoleId());
+        companyService.assignRoleToWorker(principal.memberId(), companyId, companyMemberId, req.getRoleIds());
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

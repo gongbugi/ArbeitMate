@@ -215,7 +215,7 @@ public class CompanyService {
      * 직원에게 역할군 부여
      */
     @Transactional
-    public void assignRoleToWorker(UUID ownerId, UUID companyId, UUID companyMemberId, UUID roleId) {
+    public void assignRoleToWorker(UUID ownerId, UUID companyId, UUID companyMemberId, List<UUID> roleIds) {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("Company not found"));
 
@@ -227,21 +227,28 @@ public class CompanyService {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("CompanyMember not found"));
 
-        // 회사 내 역할군 찾기
-        CompanyRole role = companyRoleRepository.findById(roleId)
-                .orElseThrow(() -> new IllegalArgumentException("Role not found"));
-        if(!role.getCompany().getId().equals(company.getId())) {
-            throw new IllegalStateException("해당 매장의 역할군이 아닙니다.");
+        // 부여하고자 하는 역할 다 가져오기
+        List<CompanyRole> roles = companyRoleRepository.findAllById(roleIds);
+
+        // 가져온 역할 검증
+        if(roles.size() != roleIds.size()) {
+            throw new IllegalArgumentException("존재하지 않는 역할 ID가 포함되어 있습니다.");
+        }
+        for(CompanyRole role : roles) {
+            if(!role.getCompany().getId().equals(companyId)) {
+                throw new IllegalStateException("해당 매장의 역할군이 아닙니다." + role.getId());
+            }
         }
 
-        boolean exists = companyMemberRoleRepository.existsByCompanyAndMemberAndRole(company, cm.getMember(), role);
-        if (exists) {
-            throw new IllegalStateException("이미 이 역할이 부여된 직원입니다.");
-        }
+        // 이미 부여된 역할은 제외, 없는 것만 새로 엔티티 생성
+        for(CompanyRole role : roles) {
+            boolean exists = companyMemberRoleRepository.existsByCompanyAndMemberAndRole(company, cm.getMember(), role);
 
-        // 엔티티 생성
-        CompanyMemberRole cmr = CompanyMemberRole.link(company, cm.getMember(), role);
-        companyMemberRoleRepository.save(cmr);
+            if (!exists) {
+                CompanyMemberRole cmr = CompanyMemberRole.link(company, cm.getMember(), role);
+                companyMemberRoleRepository.save(cmr);
+            }
+        }
     }
 
     // 중복 확인
