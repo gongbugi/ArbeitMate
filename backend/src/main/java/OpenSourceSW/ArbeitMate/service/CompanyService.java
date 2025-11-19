@@ -1,9 +1,6 @@
 package OpenSourceSW.ArbeitMate.service;
 
-import OpenSourceSW.ArbeitMate.domain.Company;
-import OpenSourceSW.ArbeitMate.domain.CompanyMember;
-import OpenSourceSW.ArbeitMate.domain.CompanyRole;
-import OpenSourceSW.ArbeitMate.domain.Member;
+import OpenSourceSW.ArbeitMate.domain.*;
 import OpenSourceSW.ArbeitMate.domain.enums.MembershipRole;
 import OpenSourceSW.ArbeitMate.dto.request.CreateRoleRequest;
 import OpenSourceSW.ArbeitMate.dto.request.CreateCompanyRequest;
@@ -212,6 +209,44 @@ public class CompanyService {
         return company.getRoles().stream()
                 .map(CompanyRoleResponse::from)
                 .toList();
+    }
+
+    /**
+     * 직원에게 역할군 부여
+     */
+    @Transactional
+    public void assignRoleToWorker(UUID ownerId, UUID companyId, UUID companyMemberId, List<UUID> roleIds) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateOwner(ownerId, company);
+
+        // 회사 내 직원 찾기
+        CompanyMember cm = company.getCompanyMembers().stream()
+                .filter(m -> m.getId().equals(companyMemberId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("CompanyMember not found"));
+
+        // 부여하고자 하는 역할 다 가져오기
+        List<CompanyRole> roles = companyRoleRepository.findAllById(roleIds);
+
+        // 가져온 역할 검증
+        if(roles.size() != roleIds.size()) {
+            throw new IllegalArgumentException("존재하지 않는 역할 ID가 포함되어 있습니다.");
+        }
+
+        // 이미 부여된 역할은 제외, 없는 것만 새로 엔티티 생성
+        for(CompanyRole role : roles) {
+            if(!role.getCompany().getId().equals(companyId)) {
+                throw new IllegalStateException("해당 매장의 역할군이 아닙니다.");
+            }
+
+            boolean exists = companyMemberRoleRepository.existsByCompanyAndMemberAndRole(company, cm.getMember(), role);
+            if (!exists) {
+                CompanyMemberRole cmr = CompanyMemberRole.link(company, cm.getMember(), role);
+                companyMemberRoleRepository.save(cmr);
+            }
+        }
     }
 
     // 중복 확인
