@@ -33,6 +33,11 @@ jobs:
           restore-keys: |
               ${{ runner.os }}-gradle-
 
+      - name: Create Firebase Key
+        run: |
+          mkdir -p ./backend/src/main/resources
+          echo "${{ secrets.FIREBASE_KEY }}" > ./backend/src/main/resources/arbeitmate-firebase-adminsdk.json
+
       - name: Make gradlew executable
         run: chmod +x backend/gradlew
 
