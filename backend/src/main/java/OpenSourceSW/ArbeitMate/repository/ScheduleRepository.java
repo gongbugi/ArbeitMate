@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     List<Schedule> findByCompanyIdAndWorkDateBetween(UUID companyId, LocalDate from, LocalDate to);
     List<Schedule> findByPeriod(SchedulePeriod period);
+    void deleteByPeriod(SchedulePeriod period);
 }

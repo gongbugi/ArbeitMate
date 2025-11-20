@@ -3,12 +3,10 @@ package OpenSourceSW.ArbeitMate.service;
 import OpenSourceSW.ArbeitMate.domain.*;
 import OpenSourceSW.ArbeitMate.domain.enums.PeriodStatus;
 import OpenSourceSW.ArbeitMate.domain.enums.PeriodType;
-import OpenSourceSW.ArbeitMate.dto.request.CreateMonthlyPeriodRequest;
-import OpenSourceSW.ArbeitMate.dto.request.CreateScheduleSlotRequest;
-import OpenSourceSW.ArbeitMate.dto.request.CreateScheduleSlotsRequest;
-import OpenSourceSW.ArbeitMate.dto.request.CreateWeeklyPeriodRequest;
+import OpenSourceSW.ArbeitMate.dto.request.*;
 import OpenSourceSW.ArbeitMate.dto.response.SchedulePeriodResponse;
 import OpenSourceSW.ArbeitMate.dto.response.ScheduleSlotResponse;
+import OpenSourceSW.ArbeitMate.dto.response.StaffingTemplateResponse;
 import OpenSourceSW.ArbeitMate.repository.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +38,7 @@ class ScheduleServiceTest {
     @Mock CompanyMemberRoleRepository companyMemberRoleRepository;
     @Mock ScheduleRepository scheduleRepository;
     @Mock SchedulePeriodRepository schedulePeriodRepository;
+    @Mock StaffingTemplateRepository staffingTemplateRepository;
 
     @InjectMocks ScheduleService scheduleService;
 
@@ -760,5 +759,556 @@ class ScheduleServiceTest {
         ).isInstanceOf(IllegalStateException.class);
 
         verify(scheduleRepository, never()).saveAll(anyList());
+    }
+
+    // =====================================================================
+    // 템플릿 관련 추가 기능 테스트
+    // =====================================================================
+    @Test
+    @DisplayName("사장은 템플릿 이름과 항목들을 넘겨서 근무 템플릿을 생성할 수 있다")
+    void createStaffingTemplate_owner_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        CompanyRole role1 = newRole(company, "홀");
+        UUID roleId1 = UUID.randomUUID();
+        ReflectionTestUtils.setField(role1, "id", roleId1);
+
+        CompanyRole role2 = newRole(company, "주방");
+        UUID roleId2 = UUID.randomUUID();
+        ReflectionTestUtils.setField(role2, "id", roleId2);
+
+        CreateStaffingTemplateItemRequest i1 = new CreateStaffingTemplateItemRequest();
+        i1.setDow(1); // 월요일
+        i1.setRoleId(roleId1);
+        i1.setStartTime(LocalTime.of(10, 0));
+        i1.setEndTime(LocalTime.of(14, 0));
+        i1.setRequiredHeadCount(2);
+
+        CreateStaffingTemplateItemRequest i2 = new CreateStaffingTemplateItemRequest();
+        i2.setDow(5); // 금요일
+        i2.setRoleId(roleId2);
+        i2.setStartTime(LocalTime.of(18, 0));
+        i2.setEndTime(LocalTime.of(22, 0));
+        i2.setRequiredHeadCount(1);
+
+        CreateStaffingTemplateRequest req = new CreateStaffingTemplateRequest();
+        req.setName("주간 기본 템플릿");
+        req.setItems(List.of(i1, i2));
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyRoleRepository.findById(roleId1)).thenReturn(Optional.of(role1));
+        when(companyRoleRepository.findById(roleId2)).thenReturn(Optional.of(role2));
+        when(staffingTemplateRepository.save(any(StaffingTemplate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        StaffingTemplateResponse res =
+                scheduleService.createStaffingTemplate(ownerId, companyId, req);
+
+        // then
+        assertThat(res.getName()).isEqualTo("주간 기본 템플릿");
+        assertThat(res.getItems()).hasSize(2);
+
+        verify(staffingTemplateRepository, times(1)).save(any(StaffingTemplate.class));
+    }
+
+    @Test
+    @DisplayName("사장이 아닌 회원은 템플릿을 생성할 수 없다")
+    void createStaffingTemplate_nonOwner_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID otherMemberId = UUID.randomUUID();
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        CreateStaffingTemplateRequest req = new CreateStaffingTemplateRequest();
+        req.setName("템플릿");
+        req.setItems(List.of());
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.createStaffingTemplate(otherMemberId, companyId, req)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(staffingTemplateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("다른 매장의 역할군을 포함한 템플릿을 생성하려 하면 예외 발생")
+    void createStaffingTemplate_roleNotFromCompany_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company1 = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId1 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company1, "id", companyId1);
+
+        Company company2 = newCompany("카페 B", owner, "서울시", "CODE2");
+        UUID companyId2 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company2, "id", companyId2);
+
+        CompanyRole roleOther = newRole(company2, "홀");
+        UUID roleOtherId = UUID.randomUUID();
+        ReflectionTestUtils.setField(roleOther, "id", roleOtherId);
+
+        CreateStaffingTemplateItemRequest item = new CreateStaffingTemplateItemRequest();
+        item.setDow(1);
+        item.setRoleId(roleOtherId);
+        item.setStartTime(LocalTime.of(10, 0));
+        item.setEndTime(LocalTime.of(14, 0));
+        item.setRequiredHeadCount(1);
+
+        CreateStaffingTemplateRequest req = new CreateStaffingTemplateRequest();
+        req.setName("잘못된 템플릿");
+        req.setItems(List.of(item));
+
+        when(companyRepository.findById(companyId1)).thenReturn(Optional.of(company1));
+        when(companyRoleRepository.findById(roleOtherId)).thenReturn(Optional.of(roleOther));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.createStaffingTemplate(ownerId, companyId1, req)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(staffingTemplateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("사장은 회사의 템플릿 목록을 조회할 수 있다")
+    void listStaffingTemplates_owner_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        StaffingTemplate t1 = StaffingTemplate.create(company, "템플릿1", owner);
+        StaffingTemplate t2 = StaffingTemplate.create(company, "템플릿2", owner);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(staffingTemplateRepository.findByCompanyId(companyId))
+                .thenReturn(List.of(t1, t2));
+
+        // when
+        List<StaffingTemplateResponse> res =
+                scheduleService.listStaffingTemplates(ownerId, companyId);
+
+        // then
+        assertThat(res).hasSize(2);
+        assertThat(res)
+                .extracting("name")
+                .containsExactlyInAnyOrder("템플릿1", "템플릿2");
+    }
+
+    @Test
+    @DisplayName("사장이 아닌 회원은 템플릿 목록을 조회할 수 없다")
+    void listStaffingTemplates_nonOwner_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID otherMemberId = UUID.randomUUID();
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.listStaffingTemplates(otherMemberId, companyId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(staffingTemplateRepository, never()).findByCompanyId(any());
+    }
+
+    @Test
+    @DisplayName("저장된 템플릿으로 기간 내 요일에 맞는 슬롯을 생성하면, 기존 슬롯을 모두 삭제한 뒤 새로 생성된다")
+    void applyTemplateToPeriod_owner_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        LocalDate start = LocalDate.of(2025, 11, 17); // MONDAY
+        LocalDate end = start.plusDays(6);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company,
+                "2025-W47",
+                PeriodType.WEEKLY,
+                start,
+                end,
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        // 템플릿: 월요일 10~14시, 홀 2명
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+
+        StaffingTemplate template = StaffingTemplate.create(company, "주간 기본", owner);
+        UUID templateId = UUID.randomUUID();
+        ReflectionTestUtils.setField(template, "id", templateId);
+
+        StaffingTemplateItem item = StaffingTemplateItem.create(
+                template,
+                role,
+                0,
+                LocalTime.of(10, 0),
+                LocalTime.of(14, 0),
+                2
+        );
+
+        // 기존에 이 period에 이미 깔려 있던 스케줄(삭제 대상)
+        Schedule existingSchedule = Schedule.create(
+                company,
+                period,
+                role,
+                start,                       // 어떤 날짜든 상관 없음
+                LocalTime.of(9, 0),
+                LocalTime.of(12, 0),
+                1
+        );
+        List<Schedule> existing = List.of(existingSchedule);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(staffingTemplateRepository.findById(templateId)).thenReturn(Optional.of(template));
+
+        when(scheduleRepository.findByPeriod(period)).thenReturn(existing);
+
+        when(scheduleRepository.saveAll(anyList()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        List<ScheduleSlotResponse> res =
+                scheduleService.applyTemplateToPeriod(ownerId, companyId, periodId, templateId);
+
+        // then
+        assertThat(res).hasSize(1);
+        assertThat(res.getFirst().getWorkDate()).isEqualTo(start);
+        assertThat(res.getFirst().getRequiredHeadCount()).isEqualTo(2);
+
+        verify(scheduleRepository, times(1)).deleteAll(existing);
+        verify(scheduleRepository, times(1)).saveAll(anyList());
+    }
+
+
+    @Test
+    @DisplayName("템플릿 적용 시, 요청자가 사장이 아니면 예외 발생")
+    void applyTemplateToPeriod_nonOwner_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID otherMemberId = UUID.randomUUID();
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        UUID periodId = UUID.randomUUID();
+        UUID templateId = UUID.randomUUID();
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.applyTemplateToPeriod(otherMemberId, companyId, periodId, templateId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(schedulePeriodRepository, never()).findById(any());
+        verify(staffingTemplateRepository, never()).findById(any());
+        verify(scheduleRepository, never()).deleteByPeriod(any());
+        verify(scheduleRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("템플릿 적용 시, 템플릿이 다른 매장에 속한 경우 예외 발생")
+    void applyTemplateToPeriod_templateCompanyMismatch_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company1 = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId1 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company1, "id", companyId1);
+
+        Company company2 = newCompany("카페 B", owner, "서울시", "CODE2");
+        UUID companyId2 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company2, "id", companyId2);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company1,
+                "2025-W47",
+                PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        StaffingTemplate template = StaffingTemplate.create(company2, "다른매장템플릿", owner);
+        UUID templateId = UUID.randomUUID();
+        ReflectionTestUtils.setField(template, "id", templateId);
+
+        when(companyRepository.findById(companyId1)).thenReturn(Optional.of(company1));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(staffingTemplateRepository.findById(templateId)).thenReturn(Optional.of(template));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.applyTemplateToPeriod(ownerId, companyId1, periodId, templateId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(scheduleRepository, never()).deleteByPeriod(any());
+        verify(scheduleRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("템플릿 적용 시, 기간 상태가 DRAFT가 아니면 예외 발생")
+    void applyTemplateToPeriod_periodNotDraft_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company,
+                "2025-W47",
+                PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.PUBLISHED); // DRAFT 아님
+
+        UUID templateId = UUID.randomUUID(); // 실제로는 조회까지 가지 않음
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.applyTemplateToPeriod(ownerId, companyId, periodId, templateId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        // 템플릿/스케줄 관련 리포지토리는 전혀 호출되지 않아야 한다
+        verify(staffingTemplateRepository, never()).findById(any());
+        verify(scheduleRepository, never()).deleteByPeriod(any());
+        verify(scheduleRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("기존 SchedulePeriod에 이미 생성된 스케쥴들을 기반으로 템플릿을 자동 생성할 수 있다")
+    void createTemplateFromPeriod_owner_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company,
+                "W47",
+                PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        // --- role 생성 + ID 세팅 ---
+        CompanyRole role1 = newRole(company, "홀");
+        UUID role1Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(role1, "id", role1Id);
+
+        CompanyRole role2 = newRole(company, "주방");
+        UUID role2Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(role2, "id", role2Id);
+
+        // --- 스케줄 생성 ---
+        Schedule s1 = Schedule.create(
+                company,
+                period,
+                role1,
+                LocalDate.of(2025, 11, 17),
+                LocalTime.of(10, 0),
+                LocalTime.of(14, 0),
+                2
+        );
+        Schedule s2 = Schedule.create(
+                company,
+                period,
+                role2,
+                LocalDate.of(2025, 11, 18),
+                LocalTime.of(18, 0),
+                LocalTime.of(22, 0),
+                1
+        );
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(scheduleRepository.findByPeriod(period)).thenReturn(List.of(s1, s2));
+
+        // 서비스에서 role을 다시 조회하므로 이 stubbing이 필요함
+        when(companyRoleRepository.findById(role1Id)).thenReturn(Optional.of(role1));
+        when(companyRoleRepository.findById(role2Id)).thenReturn(Optional.of(role2));
+
+        when(staffingTemplateRepository.save(any(StaffingTemplate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        StaffingTemplateResponse res =
+                scheduleService.createTemplateFromPeriod(ownerId, companyId, periodId);
+
+        // then
+        assertThat(res.getName()).isEqualTo("W47-TEMPLATE");
+        assertThat(res.getItems()).hasSize(2);
+
+        verify(staffingTemplateRepository, times(1)).save(any(StaffingTemplate.class));
+    }
+
+    @Test
+    @DisplayName("기존 기간 기반 템플릿 자동 생성 시, 사장이 아니면 예외 발생")
+    void createTemplateFromPeriod_nonOwner_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID otherMemberId = UUID.randomUUID();
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        UUID periodId = UUID.randomUUID();
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.createTemplateFromPeriod(otherMemberId, companyId, periodId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(schedulePeriodRepository, never()).findById(any());
+        verify(scheduleRepository, never()).findByPeriod(any());
+        verify(staffingTemplateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("기존 기간 기반 템플릿 자동 생성 시, 기간이 다른 매장에 속하면 예외 발생")
+    void createTemplateFromPeriod_periodCompanyMismatch_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company1 = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId1 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company1, "id", companyId1);
+
+        Company company2 = newCompany("카페 B", owner, "서울시", "CODE2");
+        UUID companyId2 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company2, "id", companyId2);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company2,
+                "다른매장기간",
+                PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        when(companyRepository.findById(companyId1)).thenReturn(Optional.of(company1));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.createTemplateFromPeriod(ownerId, companyId1, periodId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(scheduleRepository, never()).findByPeriod(any());
+        verify(staffingTemplateRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("기존 기간에 스케쥴이 하나도 없으면 템플릿 자동 생성 시 예외 발생")
+    void createTemplateFromPeriod_noSchedules_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company,
+                "2025-W47",
+                PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(scheduleRepository.findByPeriod(period)).thenReturn(List.of());
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.createTemplateFromPeriod(ownerId, companyId, periodId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(staffingTemplateRepository, never()).save(any());
     }
 }
