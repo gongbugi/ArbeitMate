@@ -1003,8 +1003,6 @@ class ScheduleServiceTest {
         when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
         when(staffingTemplateRepository.findById(templateId)).thenReturn(Optional.of(template));
 
-        when(scheduleRepository.findByPeriod(period)).thenReturn(existing);
-
         when(scheduleRepository.saveAll(anyList()))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -1017,7 +1015,7 @@ class ScheduleServiceTest {
         assertThat(res.getFirst().getWorkDate()).isEqualTo(start);
         assertThat(res.getFirst().getRequiredHeadCount()).isEqualTo(2);
 
-        verify(scheduleRepository, times(1)).deleteAll(existing);
+        verify(scheduleRepository, times(1)).deleteByPeriodId(any());
         verify(scheduleRepository, times(1)).saveAll(anyList());
     }
 
@@ -1048,7 +1046,7 @@ class ScheduleServiceTest {
 
         verify(schedulePeriodRepository, never()).findById(any());
         verify(staffingTemplateRepository, never()).findById(any());
-        verify(scheduleRepository, never()).deleteByPeriod(any());
+        verify(scheduleRepository, never()).deleteAll(any());
         verify(scheduleRepository, never()).saveAll(anyList());
     }
 
@@ -1092,7 +1090,7 @@ class ScheduleServiceTest {
                 scheduleService.applyTemplateToPeriod(ownerId, companyId1, periodId, templateId)
         ).isInstanceOf(IllegalStateException.class);
 
-        verify(scheduleRepository, never()).deleteByPeriod(any());
+        verify(scheduleRepository, never()).deleteAll(any());
         verify(scheduleRepository, never()).saveAll(anyList());
     }
 
@@ -1132,7 +1130,7 @@ class ScheduleServiceTest {
 
         // 템플릿/스케줄 관련 리포지토리는 전혀 호출되지 않아야 한다
         verify(staffingTemplateRepository, never()).findById(any());
-        verify(scheduleRepository, never()).deleteByPeriod(any());
+        verify(scheduleRepository, never()).deleteAll(any());
         verify(scheduleRepository, never()).saveAll(anyList());
     }
 
