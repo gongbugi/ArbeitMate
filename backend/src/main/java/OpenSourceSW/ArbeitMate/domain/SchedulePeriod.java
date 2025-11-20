@@ -58,6 +58,9 @@ public class SchedulePeriod {
     public static SchedulePeriod create(Company c, String name, PeriodType type,
                                         LocalDate start, LocalDate end,
                                         LocalDateTime availabilityDueAt) {
+        if(end.isBefore(start)) {
+            throw new IllegalArgumentException("종료일은 시작일보다 앞설 수 없습니다.");
+        }
         SchedulePeriod p = new SchedulePeriod();
         p.setCompany(c);
         p.name = name; p.periodType = type;
