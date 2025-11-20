@@ -11,6 +11,7 @@ import OpenSourceSW.ArbeitMate.security.AuthPrincipal;
 import OpenSourceSW.ArbeitMate.service.ScheduleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -115,5 +116,17 @@ public class ScheduleController {
 
         var res = scheduleService.applyTemplateToPeriod(principal.memberId(), companyId, periodId, templateId);
         return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 템플릿 삭제
+     */
+    @DeleteMapping("/templates/{templateId}")
+    public ResponseEntity<Void> deleteTemplate(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID templateId) {
+        scheduleService.deleteTemplate(principal.memberId(), companyId, templateId);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

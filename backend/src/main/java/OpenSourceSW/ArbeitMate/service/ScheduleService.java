@@ -350,6 +350,28 @@ public class ScheduleService {
         return StaffingTemplateResponse.from(template);
     }
 
+    /**
+     * 템플릿 삭제 기능
+     */
+    @Transactional
+    public void deleteTemplate(UUID ownerId, UUID companyId, UUID templateId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateOwner(ownerId, company);
+
+        // 템플릿 조회
+        StaffingTemplate template = staffingTemplateRepository.findById(templateId)
+                .orElseThrow(() -> new IllegalArgumentException("Template not found"));
+
+        // 템플릿이 해당 매장 소속인지 확인
+        if (!template.getCompany().getId().equals(companyId)) {
+            throw new IllegalStateException("해당 매장의 템플릿이 아닙니다.");
+        }
+
+        staffingTemplateRepository.delete(template); // 삭제 (items는 orphanRemoval로 같이 삭제)
+    }
+
 
     /// ====== 이름 생성 및 중복 확인 ======
     private String normalizeNameOrGenerateWeekly(UUID companyId, LocalDate start, String rawName) {

@@ -1311,4 +1311,91 @@ class ScheduleServiceTest {
 
         verify(staffingTemplateRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("사장은 자신의 매장의 템플릿을 삭제할 수 있다")
+    void deleteTemplate_owner_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        StaffingTemplate template = StaffingTemplate.create(company, "주간 기본", owner);
+        UUID templateId = UUID.randomUUID();
+        ReflectionTestUtils.setField(template, "id", templateId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(staffingTemplateRepository.findById(templateId)).thenReturn(Optional.of(template));
+
+        // when
+        scheduleService.deleteTemplate(ownerId, companyId, templateId);
+
+        // then
+        verify(staffingTemplateRepository, times(1)).delete(template);
+    }
+
+    @Test
+    @DisplayName("사장이 아닌 회원이 템플릿 삭제 시 예외 발생")
+    void deleteTemplate_nonOwner_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID otherMemberId = UUID.randomUUID();
+
+        Company company = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId = UUID.randomUUID();
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        UUID templateId = UUID.randomUUID(); // 템플릿 조회까지 가지 않게 할 것
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.deleteTemplate(otherMemberId, companyId, templateId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        // 템플릿 리포지토리는 건드리지 않아야 함
+        verify(staffingTemplateRepository, never()).findById(any());
+        verify(staffingTemplateRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("다른 매장의 템플릿을 삭제하려 하면 예외 발생")
+    void deleteTemplate_templateCompanyMismatch_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "Owner");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        // 매장 1 (요청 기준 매장)
+        Company company1 = newCompany("카페 A", owner, "서울시", "CODE1");
+        UUID companyId1 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company1, "id", companyId1);
+
+        // 매장 2 (템플릿이 실제로 속한 매장)
+        Company company2 = newCompany("카페 B", owner, "서울시", "CODE2");
+        UUID companyId2 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company2, "id", companyId2);
+
+        StaffingTemplate template = StaffingTemplate.create(company2, "다른 매장 템플릿", owner);
+        UUID templateId = UUID.randomUUID();
+        ReflectionTestUtils.setField(template, "id", templateId);
+
+        when(companyRepository.findById(companyId1)).thenReturn(Optional.of(company1));
+        when(staffingTemplateRepository.findById(templateId)).thenReturn(Optional.of(template));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.deleteTemplate(ownerId, companyId1, templateId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(staffingTemplateRepository, never()).delete(any());
+    }
 }
