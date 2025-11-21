@@ -7,7 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 
 
@@ -39,8 +39,8 @@ public class Schedule {
     private CompanyRole role;
 
     @Column(nullable = false) private LocalDate workDate;
-    @Column(nullable = false) private LocalDateTime startTs;
-    @Column(nullable = false) private LocalDateTime endTs;
+    @Column(nullable = false) private LocalTime startTime;
+    @Column(nullable = false) private LocalTime endTime;
     @Column(nullable = false) private int requiredHeadcount;
 
     @OneToMany(mappedBy = "schedule", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -51,16 +51,16 @@ public class Schedule {
 
     //== 생성 메서드 ==//
     public static Schedule create(Company company, SchedulePeriod period, CompanyRole role,
-                                  LocalDate workDate, LocalDateTime startTs, LocalDateTime endTs,
+                                  LocalDate workDate, LocalTime startTime, LocalTime endTime,
                                   int requiredHeadcount) {
-        if (!endTs.isAfter(startTs)) throw new IllegalArgumentException("endTs must be after startTs");
-        if (requiredHeadcount <= 0) throw new IllegalArgumentException("requiredHeadcount > 0");
+        if (!endTime.isAfter(startTime)) throw new IllegalArgumentException("종료시간은 시작시간 이후여야 합니다.");
+        if (requiredHeadcount <= 0) throw new IllegalArgumentException("최소 1명 이상을 배치해야합니다.");
 
         Schedule s = new Schedule();
         s.setCompany(company);
         s.setPeriod(period);
         s.setRole(role);
-        s.workDate = workDate; s.startTs = startTs; s.endTs = endTs;
+        s.workDate = workDate; s.startTime = startTime; s.endTime = endTime;
         s.requiredHeadcount = requiredHeadcount;
         return s;
     }

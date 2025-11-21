@@ -35,6 +35,16 @@ public class StaffingTemplateItem {
     //== 생성 메서드 ==//
     public static StaffingTemplateItem create(StaffingTemplate t, CompanyRole role,
                                               int dow, LocalTime start, LocalTime end, int headcount) {
+        if (!end.isAfter(start)) {
+            throw new IllegalArgumentException("종료시간은 시작시간 이후여야 합니다.");
+        }
+        if (headcount <= 0) {
+            throw new IllegalArgumentException("최소 1명 이상을 배치해야 합니다.");
+        }
+        if (dow < 0 || dow > 6) {
+            throw new IllegalArgumentException("dow 는 0~6(월~일) 이어야 합니다.");
+        }
+
         StaffingTemplateItem i = new StaffingTemplateItem();
         i.setTemplate(t);
         i.setRole(role);

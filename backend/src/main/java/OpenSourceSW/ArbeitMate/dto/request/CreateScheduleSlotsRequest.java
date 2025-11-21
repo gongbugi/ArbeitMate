@@ -1,0 +1,15 @@
+package OpenSourceSW.ArbeitMate.dto.request;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class CreateScheduleSlotsRequest {
+
+    @NotEmpty
+    @Valid
+    private List<CreateScheduleSlotRequest> slots;
+}
