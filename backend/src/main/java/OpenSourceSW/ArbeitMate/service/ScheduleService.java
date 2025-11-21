@@ -570,7 +570,47 @@ public class ScheduleService {
     }
 
     /**
-     * 고정 근무자 설정/패턴 조회
+     * 전체 고정 근무자 설정/패턴 조회
+     */
+    public List<FixedShiftResponse> getAllFixedShiftConfig(UUID ownerId, UUID companyId) {
+        // 회사 + 사장 검증
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+        validateOwner(ownerId, company);
+
+        // 이 매장의 WORKER들 중 고정 근무자만 필터링
+        List<CompanyMember> workers = companyMemberRepository
+                .findByCompanyIdAndRole(companyId, MembershipRole.WORKER);
+
+        List<CompanyMember> fixedWorkers = workers.stream()
+                .filter(CompanyMember::isFixedShiftWorker)
+                .toList();
+
+        if (fixedWorkers.isEmpty()) {
+            return List.of();
+        }
+
+        // 회사 기준 전체 FixedShift 로드 후 멤버별로 그룹핑
+        List<FixedShift> allShifts = fixedShiftRepository.findByCompanyId(companyId);
+        Map<UUID, List<FixedShift>> shiftsByMember = allShifts.stream()
+                .collect(Collectors.groupingBy(fs -> fs.getMember().getId()));
+
+        // 각 고정 근무자별로 FixedShiftResponse 생성
+        return fixedWorkers.stream()
+                .map(cm -> {
+                    UUID memberId = cm.getMember().getId();
+                    List<FixedShift> shifts = shiftsByMember.getOrDefault(memberId, List.of());
+
+                    List<FixedShiftItemResponse> itemResponses = shifts.stream()
+                            .map(FixedShiftItemResponse::from)
+                            .toList();
+
+                    return buildFixedShiftResponse(cm, true, itemResponses);
+                }).toList();
+    }
+
+    /**
+     * 특정 고정 근무자 설정/패턴 조회
      */
     public FixedShiftResponse getFixedShiftConfig(UUID ownerId, UUID companyId, UUID companyMemberId) {
         // 회사 + 사장 검증

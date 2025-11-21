@@ -9,19 +9,32 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/companies/{companyId}/workers/{companyMemberId}/fixed-shifts")
+@RequestMapping("/companies/{companyId}/workers/fixed-shifts")
 public class FixedShiftController {
 
     private final ScheduleService scheduleService;
 
     /**
-     * 고정 근무자 설정 조회
+     * 전체 고정 근무자 설정 조회
      */
     @GetMapping
+    public ResponseEntity<List<FixedShiftResponse>> getAllFixedShiftConfig(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId) {
+
+        var res = scheduleService.getAllFixedShiftConfig(principal.memberId(), companyId);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 특정 고정 근무자 설정 조회
+     */
+    @GetMapping("/{companyMemberId}")
     public ResponseEntity<FixedShiftResponse> getFixedShiftConfig(
             @AuthenticationPrincipal AuthPrincipal principal,
             @PathVariable UUID companyId,
@@ -34,7 +47,7 @@ public class FixedShiftController {
     /**
      * 고정 근무자 설정/변경
      */
-    @PutMapping
+    @PostMapping("/{companyMemberId}")
     public ResponseEntity<FixedShiftResponse> updateFixedShiftConfig(
             @AuthenticationPrincipal AuthPrincipal principal,
             @PathVariable UUID companyId,
