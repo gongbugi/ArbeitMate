@@ -45,6 +45,9 @@ public class Company {
     private List<CompanyRole> roles = new ArrayList<>();
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FixedShift> fixedShifts = new ArrayList<>();
+
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SchedulePeriod> periods = new ArrayList<>();
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -95,6 +98,13 @@ public class Company {
         if (!this.roles.contains(role)) {
             this.roles.add(role);
             role.setCompany(this);
+        }
+    }
+
+    public void addFixedShift(FixedShift fs) {
+        if (!this.fixedShifts.contains(fs)) {
+            this.fixedShifts.add(fs);
+            fs.setCompany(this);
         }
     }
 

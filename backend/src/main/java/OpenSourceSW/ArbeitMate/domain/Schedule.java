@@ -96,4 +96,17 @@ public class Schedule {
                 .count();
         return assigned >= requiredHeadcount;
     }
+
+    /**
+     * 현재 requiredHeadcount 가 minRequired 보다 작으면 minRequired 까지 올리기
+     * (고정 근무자 수에 맞춰 정원을 늘리는 데 사용)
+     */
+    public void ensureRequiredHeadcountAtLeast(int minRequired) {
+        if (minRequired <= 0) {
+            throw new IllegalArgumentException("requiredHeadcount는 1 이상이어야 합니다.");
+        }
+        if (this.requiredHeadcount < minRequired) {
+            this.requiredHeadcount = minRequired;
+        }
+    }
 }

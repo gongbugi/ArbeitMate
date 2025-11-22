@@ -1,13 +1,7 @@
 package OpenSourceSW.ArbeitMate.controller;
 
-import OpenSourceSW.ArbeitMate.dto.request.CreateMonthlyPeriodRequest;
-import OpenSourceSW.ArbeitMate.dto.request.CreateScheduleSlotsRequest;
-import OpenSourceSW.ArbeitMate.dto.request.CreateStaffingTemplateRequest;
-import OpenSourceSW.ArbeitMate.dto.request.CreateWeeklyPeriodRequest;
-import OpenSourceSW.ArbeitMate.dto.response.SchedulePeriodResponse;
-import OpenSourceSW.ArbeitMate.dto.response.SchedulePeriodWithSlotsResponse;
-import OpenSourceSW.ArbeitMate.dto.response.ScheduleSlotResponse;
-import OpenSourceSW.ArbeitMate.dto.response.StaffingTemplateResponse;
+import OpenSourceSW.ArbeitMate.dto.request.*;
+import OpenSourceSW.ArbeitMate.dto.response.*;
 import OpenSourceSW.ArbeitMate.security.AuthPrincipal;
 import OpenSourceSW.ArbeitMate.service.ScheduleService;
 import jakarta.validation.Valid;
@@ -96,6 +90,31 @@ public class ScheduleController {
     }
 
     /**
+     * 근무자 희망 근무 요일/시간 조회
+     */
+    @GetMapping("/worker/availability-pattern")
+    public ResponseEntity<MemberAvailabilityResponse> getMemberAvailabilityPattern(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId) {
+
+        var res = scheduleService.getMemberAvailabilityPattern(principal.memberId(), companyId);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 근무지 희망 근무 요일/시간 제출(수정)
+     */
+    @PostMapping("/worker/availability-pattern")
+    public ResponseEntity<Void> updateMemberAvailabilityPattern(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @RequestBody @Valid UpdateMemberAvailabilityRequest req) {
+
+        scheduleService.updateMemberAvailabilityPattern(principal.memberId(), companyId, req);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    /**
      * 필요 인원 템플릿 생성
      */
     @PostMapping("/create/staffing-templates")
@@ -156,6 +175,86 @@ public class ScheduleController {
             @PathVariable UUID companyId,
             @PathVariable UUID templateId) {
         scheduleService.deleteTemplate(principal.memberId(), companyId, templateId);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    /**
+     * 가능한 스케쥴 슬롯 목록 조회
+     */
+    @GetMapping("/{periodId}/availability/slots")
+    public ResponseEntity<WorkerAvailabilitySlotsResponse> getWorkerSlots(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId) {
+
+        var res =  scheduleService.getWorkerAvailabilitySlots(principal.memberId(), companyId, periodId);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 가용 시간 제출 (근무자)
+     */
+    @PostMapping("/{periodId}/availability/submit")
+    public ResponseEntity<Void> submitAvailability(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId,
+            @RequestBody SubmitAvailabilityRequest req) {
+
+        scheduleService.submitAvailability(principal.memberId(), companyId, periodId, req);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    /**
+     * 근무자들 가용 시간 제출 현황 조회
+     */
+    @GetMapping("/{periodId}/availability/submissions")
+    public ResponseEntity<List<AvailabilitySubmissionStatusResponse>> getSubmissionStatus(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId) {
+
+        var res = scheduleService.getAvailabilitySubmissionStatus(principal.memberId(), companyId, periodId);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 자동 편성 실행
+     */
+    @PostMapping("/{periodId}/auto-assign")
+    public ResponseEntity<List<ScheduleAssignmentSlotResponse>> autoAssignSchedules(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId) {
+
+        var result = scheduleService.autoAssignSchedules(principal.memberId(), companyId, periodId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 수동 편성 반영
+     */
+    @PostMapping("/{periodId}/assignments")
+    public ResponseEntity<List<ScheduleAssignmentSlotResponse>> updateScheduleAssignments(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId,
+            @Valid @RequestBody UpdateScheduleAssignmentsRequest request) {
+
+        var result = scheduleService.updateScheduleAssignments(principal.memberId(), companyId, periodId, request);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 근무표 확정 (게시)
+     */
+    @PostMapping("/{periodId}/publish")
+    public ResponseEntity<Void> publishSchedulePeriod(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId) {
+
+        scheduleService.publishSchedulePeriod(principal.memberId(), companyId, periodId);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

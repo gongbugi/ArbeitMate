@@ -43,6 +43,10 @@ public class MemberAvailability {
     public static MemberAvailability create(Company c, Member m, int dow,
                                             LocalTime start, LocalTime end,
                                             LocalDate from, LocalDate to) {
+        if (!end.isAfter(start)) {
+            throw new IllegalArgumentException("종료시간은 시작시간 이후여야 합니다.");
+        }
+
         MemberAvailability a = new MemberAvailability();
         a.member = m;
         a.dow = dow; a.startTime = start; a.endTime = end;
@@ -55,5 +59,17 @@ public class MemberAvailability {
     //== 연관관계 편의 메서드 ==//
     public void setCompany(Company company) {
         this.company = company;
+    }
+
+    // == 비즈니스 메서드 == //
+    public boolean isEffectiveOn(LocalDate date) {
+        if (date.isBefore(effectiveFrom)) return false;
+        if (effectiveTo != null && date.isAfter(effectiveTo)) return false;
+        return true;
+    }
+
+    public boolean overlaps(LocalTime start, LocalTime end) {
+        // startTime, endTime이랑 start, end가 겹치는지
+        return !this.endTime.isBefore(start) && !this.startTime.isAfter(end);
     }
 }

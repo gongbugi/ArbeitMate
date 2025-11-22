@@ -30,7 +30,7 @@ public class ScheduleAssignment {
     private Member member;
 
     @Enumerated(EnumType.STRING) @Column(nullable = false)
-    private AssignmentStatus status;
+    private AssignmentStatus status; // ASSIGNED, PENDING_SWAP, CANCELLED
 
     //== 생성 메서드 ==//
     public static ScheduleAssignment create(Schedule s, Member m) {

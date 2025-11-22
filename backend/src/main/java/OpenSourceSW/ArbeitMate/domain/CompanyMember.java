@@ -37,6 +37,9 @@ public class CompanyMember {
     private int hourlyWage;
 
     @Column(nullable = false)
+    private boolean fixedShiftWorker = false;  // 고정 근무자 여부
+
+    @Column(nullable = false)
     private Integer alertLeadMinutes = 120; // 기본 값: 2시간 전 알림
 
     //== 생성 메서드 ==//
@@ -46,6 +49,7 @@ public class CompanyMember {
         cm.setMember(member);
         cm.role = role;
         cm.hourlyWage = hourlyWage;
+        cm.fixedShiftWorker = false;
         cm.alertLeadMinutes = 120;
         return cm;
     }
@@ -61,6 +65,17 @@ public class CompanyMember {
     }
 
     //== 비즈니스 로직==//
+
+    /**
+     * 고정 근무자 설정
+     */
+    public void markAsFixedShiftWorker() {
+        this.fixedShiftWorker = true;
+    }
+    public void unmarkAsFixedShiftWorker() {
+        this.fixedShiftWorker = false;
+    }
+
     /**
      * 알림 시간 재조정
      */

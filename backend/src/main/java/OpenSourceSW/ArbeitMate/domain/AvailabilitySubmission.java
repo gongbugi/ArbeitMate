@@ -50,4 +50,9 @@ public class AvailabilitySubmission {
     public void setCompany(Company company) {
         this.company = company;
     }
+
+    //== 비즈니스 메서드==//
+    public void refreshSubmittedAt() {
+        this.submittedAt = LocalDateTime.now();
+    }
 }

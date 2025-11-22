@@ -1,12 +1,11 @@
 package OpenSourceSW.ArbeitMate.service;
 
 import OpenSourceSW.ArbeitMate.domain.*;
+import OpenSourceSW.ArbeitMate.domain.enums.MembershipRole;
 import OpenSourceSW.ArbeitMate.domain.enums.PeriodStatus;
 import OpenSourceSW.ArbeitMate.domain.enums.PeriodType;
 import OpenSourceSW.ArbeitMate.dto.request.*;
-import OpenSourceSW.ArbeitMate.dto.response.SchedulePeriodResponse;
-import OpenSourceSW.ArbeitMate.dto.response.ScheduleSlotResponse;
-import OpenSourceSW.ArbeitMate.dto.response.StaffingTemplateResponse;
+import OpenSourceSW.ArbeitMate.dto.response.*;
 import OpenSourceSW.ArbeitMate.repository.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -39,6 +39,10 @@ class ScheduleServiceTest {
     @Mock ScheduleRepository scheduleRepository;
     @Mock SchedulePeriodRepository schedulePeriodRepository;
     @Mock StaffingTemplateRepository staffingTemplateRepository;
+    @Mock FixedShiftRepository fixedShiftRepository;
+    @Mock MemberAvailabilityRepository memberAvailabilityRepository;
+    @Mock ScheduleSlotAvailabilityRepository scheduleSlotAvailabilityRepository;
+    @Mock AvailabilitySubmissionRepository availabilitySubmissionRepository;
 
     @InjectMocks ScheduleService scheduleService;
 
@@ -1395,5 +1399,1165 @@ class ScheduleServiceTest {
         ).isInstanceOf(IllegalStateException.class);
 
         verify(staffingTemplateRepository, never()).delete(any());
+    }
+
+    // =====================================================================
+    // updateMemberAvailabilityPattern
+    // =====================================================================
+    @Test
+    @DisplayName("희망 근무 시간 등록 시 - 기존 패턴 전체 삭제 후 새 패턴 저장")
+    void updateMemberAvailabilityPattern_success() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Member member = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        Company company = newCompany("카페 A", member, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(Optional.of(cm));
+        when(cm.isFixedShiftWorker()).thenReturn(false);
+        when(cm.getMember()).thenReturn(member);
+
+        MemberAvailabilityItemRequest i1 = new MemberAvailabilityItemRequest();
+        i1.setDow(0);
+        i1.setStartTime(LocalTime.of(10, 0));
+        i1.setEndTime(LocalTime.of(14, 0));
+        i1.setEffectiveFrom(LocalDate.of(2025, 1, 1));
+        i1.setEffectiveTo(LocalDate.of(2025, 12, 31));
+
+        MemberAvailabilityItemRequest i2 = new MemberAvailabilityItemRequest();
+        i2.setDow(3);
+        i2.setStartTime(LocalTime.of(18, 0));
+        i2.setEndTime(LocalTime.of(22, 0));
+        i2.setEffectiveFrom(LocalDate.of(2025, 1, 1));
+        i2.setEffectiveTo(LocalDate.of(2025, 12, 31));
+
+        UpdateMemberAvailabilityRequest req = new UpdateMemberAvailabilityRequest();
+        req.setItems(List.of(i1, i2));
+
+        // when
+        scheduleService.updateMemberAvailabilityPattern(memberId, companyId, req);
+
+        // then
+        verify(memberAvailabilityRepository, times(1))
+                .deleteByCompanyIdAndMemberId(companyId, memberId);
+        verify(memberAvailabilityRepository, times(1))
+                .saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("희망 근무 시간 등록 시 - 고정 근무자는 등록 불가")
+    void updateMemberAvailabilityPattern_fixedWorker_throws() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Member member = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        Company company = newCompany("카페 A", member, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(Optional.of(cm));
+        when(cm.isFixedShiftWorker()).thenReturn(true);
+
+        UpdateMemberAvailabilityRequest req = new UpdateMemberAvailabilityRequest();
+        req.setItems(List.of()); // 내용 무관
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.updateMemberAvailabilityPattern(memberId, companyId, req)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(memberAvailabilityRepository, never()).saveAll(anyList());
+    }
+
+    // =====================================================================
+    // getMemberAvailabilityPattern
+    // =====================================================================
+    @Test
+    @DisplayName("희망 근무 시간 조회 - 정상 조회")
+    void getMemberAvailabilityPattern_success() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Member member = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        Company company = newCompany("카페 A", member, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(Optional.of(cm));
+        when(cm.isFixedShiftWorker()).thenReturn(false);
+        when(cm.getMember()).thenReturn(member);
+
+        MemberAvailability a1 = MemberAvailability.create(
+                company, member, 0,
+                LocalTime.of(10, 0), LocalTime.of(14, 0),
+                LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31)
+        );
+        MemberAvailability a2 = MemberAvailability.create(
+                company, member, 3,
+                LocalTime.of(18, 0), LocalTime.of(22, 0),
+                LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31)
+        );
+
+        when(memberAvailabilityRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(List.of(a1, a2));
+
+        // when
+        MemberAvailabilityResponse res =
+                scheduleService.getMemberAvailabilityPattern(memberId, companyId);
+
+        // then
+        assertThat(res.getMemberId()).isEqualTo(memberId);
+        assertThat(res.getCompanyId()).isEqualTo(companyId);
+        assertThat(res.getMemberName()).isEqualTo(member.getName());
+        assertThat(res.getItems()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("희망 근무 시간 조회 - 고정 근무자는 예외 발생")
+    void getMemberAvailabilityPattern_fixedWorker_throws() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Member member = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(member, "id", memberId);
+
+        Company company = newCompany("카페 A", member, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(Optional.of(cm));
+        when(cm.isFixedShiftWorker()).thenReturn(true);
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.getMemberAvailabilityPattern(memberId, companyId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(memberAvailabilityRepository, never()).findByCompanyIdAndMemberId(any(), any());
+    }
+
+    // =====================================================================
+    // updateFixedShift
+    // =====================================================================
+    @Test
+    @DisplayName("고정 근무자 해제 - 플래그 해제 후 패턴 전체 삭제")
+    void updateFixedShift_unmark_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        UUID memberId = UUID.randomUUID();
+        Member worker = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(worker, "id", memberId);
+
+        UUID companyMemberId = UUID.randomUUID();
+        CompanyMember cm = mock(CompanyMember.class);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findById(companyMemberId)).thenReturn(Optional.of(cm));
+        when(cm.getCompany()).thenReturn(company);
+        when(cm.getMember()).thenReturn(worker);
+
+        UpdateFixedShiftRequest req = new UpdateFixedShiftRequest();
+        req.setFixedShiftWorker(false);
+        req.setShifts(List.of());
+
+        // when
+        FixedShiftResponse res =
+                scheduleService.updateFixedShift(ownerId, companyId, companyMemberId, req);
+
+        // then
+        verify(cm, times(1)).unmarkAsFixedShiftWorker();
+        verify(fixedShiftRepository, times(1))
+                .deleteByCompanyIdAndMemberId(companyId, memberId);
+        verify(fixedShiftRepository, never()).saveAll(anyList());
+
+        assertThat(res.isFixedShiftWorker()).isFalse();
+        assertThat(res.getShifts()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("고정 근무자 등록/갱신 - 플래그 ON + 기존 삭제 후 새 패턴 저장")
+    void updateFixedShift_mark_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        UUID memberId = UUID.randomUUID();
+        Member worker = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(worker, "id", memberId);
+
+        UUID companyMemberId = UUID.randomUUID();
+        CompanyMember cm = mock(CompanyMember.class);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findById(companyMemberId)).thenReturn(Optional.of(cm));
+        when(cm.getCompany()).thenReturn(company);
+        when(cm.getMember()).thenReturn(worker);
+
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+        when(companyRoleRepository.findById(roleId)).thenReturn(Optional.of(role));
+
+        FixedShiftItemRequest item = new FixedShiftItemRequest();
+        item.setRoleId(roleId);
+        item.setDow(0);
+        item.setStartTime(LocalTime.of(10, 0));
+        item.setEndTime(LocalTime.of(14, 0));
+        item.setEffectiveFrom(LocalDate.of(2025, 1, 1));
+        item.setEffectiveTo(LocalDate.of(2025, 12, 31));
+
+        UpdateFixedShiftRequest req = new UpdateFixedShiftRequest();
+        req.setFixedShiftWorker(true);
+        req.setShifts(List.of(item));
+
+        // when
+        FixedShiftResponse res =
+                scheduleService.updateFixedShift(ownerId, companyId, companyMemberId, req);
+
+        // then
+        verify(cm, times(1)).markAsFixedShiftWorker();
+        verify(fixedShiftRepository, times(1))
+                .deleteByCompanyIdAndMemberId(companyId, memberId);
+        verify(fixedShiftRepository, times(1)).saveAll(anyList());
+
+        assertThat(res.isFixedShiftWorker()).isTrue();
+        assertThat(res.getShifts()).hasSize(1);
+    }
+
+    // =====================================================================
+    // getAllFixedShiftConfig
+    // =====================================================================
+    @Test
+    @DisplayName("전체 고정 근무자 조회 - WORKER 중 fixed=true 인 멤버만 반환")
+    void getAllFixedShiftConfig_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        Member m1 = newMember("w1@test.com", "알바1");
+        UUID m1Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(m1, "id", m1Id);
+
+        Member m2 = newMember("w2@test.com", "알바2");
+        UUID m2Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(m2, "id", m2Id);
+
+        CompanyMember cm1 = mock(CompanyMember.class);
+        CompanyMember cm2 = mock(CompanyMember.class);
+
+        when(cm1.isFixedShiftWorker()).thenReturn(true);
+        when(cm2.isFixedShiftWorker()).thenReturn(false);
+
+        UUID cm1Id = UUID.randomUUID();
+        when(cm1.getId()).thenReturn(cm1Id);
+        when(cm1.getMember()).thenReturn(m1);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findByCompanyIdAndRole(companyId, MembershipRole.WORKER))
+                .thenReturn(List.of(cm1, cm2));
+
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+
+        FixedShift fs1 = FixedShift.create(
+                company, m1, role,
+                0,
+                LocalTime.of(10, 0),
+                LocalTime.of(14, 0),
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31)
+        );
+        FixedShift fs2 = FixedShift.create(
+                company, m2, role,
+                0,
+                LocalTime.of(10, 0),
+                LocalTime.of(14, 0),
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31)
+        );
+
+        when(fixedShiftRepository.findByCompanyId(companyId))
+                .thenReturn(List.of(fs1, fs2));
+
+        // when
+        List<FixedShiftResponse> res =
+                scheduleService.getAllFixedShiftConfig(ownerId, companyId);
+
+        // then
+        assertThat(res).hasSize(1);
+        FixedShiftResponse r1 = res.getFirst();
+        assertThat(r1.getMemberId()).isEqualTo(m1Id);
+        assertThat(r1.getShifts()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("전체 고정 근무자 조회 - 고정 근무자가 없으면 빈 리스트")
+    void getAllFixedShiftConfig_noFixed_returnEmpty() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(cm.isFixedShiftWorker()).thenReturn(false);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findByCompanyIdAndRole(companyId, MembershipRole.WORKER))
+                .thenReturn(List.of(cm));
+
+        // when
+        List<FixedShiftResponse> res =
+                scheduleService.getAllFixedShiftConfig(ownerId, companyId);
+
+        // then
+        assertThat(res).isEmpty();
+        verify(fixedShiftRepository, never()).findByCompanyId(any());
+    }
+
+    // =====================================================================
+    // getFixedShiftConfig
+    // =====================================================================
+    @Test
+    @DisplayName("특정 고정 근무자 패턴 조회 - 정상 조회")
+    void getFixedShiftConfig_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        Member worker = newMember("worker@test.com", "알바");
+        UUID memberId = UUID.randomUUID();
+        ReflectionTestUtils.setField(worker, "id", memberId);
+
+        UUID companyMemberId = UUID.randomUUID();
+        CompanyMember cm = mock(CompanyMember.class);
+        when(cm.getCompany()).thenReturn(company);
+        when(cm.getMember()).thenReturn(worker);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(companyMemberRepository.findById(companyMemberId)).thenReturn(Optional.of(cm));
+
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+
+        FixedShift fs1 = FixedShift.create(
+                company, worker, role,
+                0,
+                LocalTime.of(10, 0),
+                LocalTime.of(14, 0),
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31)
+        );
+
+        when(fixedShiftRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(List.of(fs1));
+
+        // when
+        FixedShiftResponse res =
+                scheduleService.getFixedShiftConfig(ownerId, companyId, companyMemberId);
+
+        // then
+        assertThat(res.getMemberId()).isEqualTo(memberId);
+        assertThat(res.getShifts()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("특정 고정 근무자 패턴 조회 - 다른 매장 직원이면 예외")
+    void getFixedShiftConfig_companyMismatch_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        Company company1 = newCompany("카페 A", owner, "서울", "CODE1");
+        UUID companyId1 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company1, "id", companyId1);
+
+        Company company2 = newCompany("카페 B", owner, "서울", "CODE2");
+        UUID companyId2 = UUID.randomUUID();
+        ReflectionTestUtils.setField(company2, "id", companyId2); // ✅ 이 줄 추가
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(cm.getCompany()).thenReturn(company2);
+
+        UUID companyMemberId = UUID.randomUUID();
+
+        when(companyRepository.findById(companyId1)).thenReturn(Optional.of(company1));
+        when(companyMemberRepository.findById(companyMemberId)).thenReturn(Optional.of(cm));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.getFixedShiftConfig(ownerId, companyId1, companyMemberId)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(fixedShiftRepository, never()).findByCompanyIdAndMemberId(any(), any());
+    }
+
+
+    // =====================================================================
+    // getWorkerAvailabilitySlots
+    // =====================================================================
+    @Test
+    @DisplayName("근무자 가용 슬롯 조회 - 역할/패턴/이미 제출 내역을 반영해 recommended/willing 반환")
+    void getWorkerAvailabilitySlots_success() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        // 회사 / 기간
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", UUID.randomUUID());
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company,
+                "2025-W47",
+                PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        // 멤버 & 회사멤버
+        Member worker = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(worker, "id", memberId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(cm.isFixedShiftWorker()).thenReturn(false);
+        when(cm.getMember()).thenReturn(worker);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(Optional.of(cm));
+
+        // 역할
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+
+        CompanyMemberRole cmr = mock(CompanyMemberRole.class);
+        when(cmr.getRole()).thenReturn(role);
+        when(companyMemberRoleRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(List.of(cmr));
+
+        // 슬롯 2개
+        Schedule slot1 = Schedule.create(
+                company,
+                period,
+                role,
+                LocalDate.of(2025, 11, 17),
+                LocalTime.of(10, 0),
+                LocalTime.of(14, 0),
+                1
+        );
+        Schedule slot2 = Schedule.create(
+                company,
+                period,
+                role,
+                LocalDate.of(2025, 11, 18),
+                LocalTime.of(14, 0),
+                LocalTime.of(18, 0),
+                1
+        );
+        UUID slotId1 = UUID.randomUUID();
+        UUID slotId2 = UUID.randomUUID();
+        ReflectionTestUtils.setField(slot1, "id", slotId1);
+        ReflectionTestUtils.setField(slot2, "id", slotId2);
+
+        when(scheduleRepository.findByPeriod(period))
+                .thenReturn(List.of(slot1, slot2));
+
+        // 패턴 : 월/화 둘 다 겹치게
+        MemberAvailability p1 = MemberAvailability.create(
+                company,
+                worker,
+                0, // 월요일
+                LocalTime.of(9, 0),
+                LocalTime.of(23, 0),
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31)
+        );
+        MemberAvailability p2 = MemberAvailability.create(
+                company,
+                worker,
+                1, // 화요일
+                LocalTime.of(9, 0),
+                LocalTime.of(23, 0),
+                LocalDate.of(2025, 1, 1),
+                LocalDate.of(2025, 12, 31)
+        );
+        when(memberAvailabilityRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(List.of(p1, p2));
+
+        // 이미 제출한 슬롯 : slot1만 willing
+        ScheduleSlotAvailability a1 = ScheduleSlotAvailability.willing(slot1, worker);
+        when(scheduleSlotAvailabilityRepository.findByMemberAndPeriod(memberId, period))
+                .thenReturn(List.of(a1));
+
+        // when
+        WorkerAvailabilitySlotsResponse res =
+                scheduleService.getWorkerAvailabilitySlots(memberId, companyId, periodId);
+
+        // then
+        assertThat(res.getRecommendedSlots()).hasSize(2);
+        assertThat(res.getOtherSlots()).isEmpty();
+
+        WorkerSlotResponse first = res.getRecommendedSlots().getFirst();
+        assertThat(first.isWilling()).isTrue(); // slot1
+    }
+
+    @Test
+    @DisplayName("근무자 가용 슬롯 조회 - 가능한 역할이 없으면 빈 리스트 반환")
+    void getWorkerAvailabilitySlots_noRoles_returnEmpty() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", UUID.randomUUID());
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company,
+                "2025-W47",
+                PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        Member worker = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(worker, "id", memberId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(cm.isFixedShiftWorker()).thenReturn(false);
+        when(cm.getMember()).thenReturn(worker);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(Optional.of(cm));
+        when(companyMemberRoleRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(List.of()); // 역할 없음
+
+        // when
+        WorkerAvailabilitySlotsResponse res =
+                scheduleService.getWorkerAvailabilitySlots(memberId, companyId, periodId);
+
+        // then
+        assertThat(res.getRecommendedSlots()).isEmpty();
+        assertThat(res.getOtherSlots()).isEmpty();
+
+        verify(scheduleRepository, never()).findByPeriod(any());
+    }
+
+    // =====================================================================
+    // submitAvailability
+    // =====================================================================
+    @Test
+    @DisplayName("가용 시간 최초 제출 - 이전 내역 삭제 후 새로 저장 + 제출 기록 생성")
+    void submitAvailability_firstTime_success() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", UUID.randomUUID());
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company,
+                "2025-W47",
+                PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        Member worker = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(worker, "id", memberId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(cm.isFixedShiftWorker()).thenReturn(false);
+        when(cm.getMember()).thenReturn(worker);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(Optional.of(cm));
+
+        // 역할
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+
+        CompanyMemberRole cmr = mock(CompanyMemberRole.class);
+        when(cmr.getRole()).thenReturn(role);
+        when(companyMemberRoleRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(List.of(cmr));
+
+        // 슬롯 2개
+        Schedule s1 = Schedule.create(
+                company, period, role,
+                LocalDate.of(2025, 11, 17),
+                LocalTime.of(10, 0), LocalTime.of(14, 0),
+                1
+        );
+        Schedule s2 = Schedule.create(
+                company, period, role,
+                LocalDate.of(2025, 11, 18),
+                LocalTime.of(14, 0), LocalTime.of(18, 0),
+                1
+        );
+        UUID s1Id = UUID.randomUUID();
+        UUID s2Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(s1, "id", s1Id);
+        ReflectionTestUtils.setField(s2, "id", s2Id);
+
+        when(scheduleRepository.findAllById(List.of(s1Id, s2Id)))
+                .thenReturn(List.of(s1, s2));
+
+        SubmitAvailabilityRequest req = new SubmitAvailabilityRequest();
+        req.setSlotIds(List.of(s1Id, s2Id));
+
+        when(availabilitySubmissionRepository
+                .findByCompanyIdAndPeriodIdAndMemberId(companyId, periodId, memberId))
+                .thenReturn(Optional.empty());
+
+        // when
+        scheduleService.submitAvailability(memberId, companyId, periodId, req);
+
+        // then
+        verify(scheduleSlotAvailabilityRepository, times(1))
+                .deleteByMemberAndPeriod(memberId, period);
+        verify(scheduleSlotAvailabilityRepository, times(1))
+                .saveAll(anyList());
+        verify(availabilitySubmissionRepository, times(1))
+                .save(any(AvailabilitySubmission.class));
+    }
+
+    @Test
+    @DisplayName("가용 시간 제출 시, 다른 기간의 슬롯이 포함되면 예외")
+    void submitAvailability_otherPeriodSlot_throws() {
+        // given
+        UUID companyId = UUID.randomUUID();
+        UUID memberId = UUID.randomUUID();
+
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", UUID.randomUUID());
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period1 = SchedulePeriod.create(
+                company, "P1", PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17), LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId1 = UUID.randomUUID();
+        ReflectionTestUtils.setField(period1, "id", periodId1);
+
+        SchedulePeriod period2 = SchedulePeriod.create(
+                company, "P2", PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 24), LocalDate.of(2025, 11, 30),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId2 = UUID.randomUUID();
+        ReflectionTestUtils.setField(period2, "id", periodId2); // ✅ 이 줄 추가
+
+        Member worker = newMember("worker@test.com", "알바");
+        ReflectionTestUtils.setField(worker, "id", memberId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(cm.isFixedShiftWorker()).thenReturn(false);
+        when(cm.getMember()).thenReturn(worker);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId1)).thenReturn(Optional.of(period1));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(Optional.of(cm));
+
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+        CompanyMemberRole cmr = mock(CompanyMemberRole.class);
+        when(cmr.getRole()).thenReturn(role);
+        when(companyMemberRoleRepository.findByCompanyIdAndMemberId(companyId, memberId))
+                .thenReturn(List.of(cmr));
+
+        // 다른 기간의 슬롯
+        Schedule sOther = Schedule.create(
+                company, period2, role,
+                LocalDate.of(2025, 11, 25),
+                LocalTime.of(10, 0),
+                LocalTime.of(14, 0),
+                1
+        );
+        UUID slotId = UUID.randomUUID();
+        ReflectionTestUtils.setField(sOther, "id", slotId);
+        when(scheduleRepository.findAllById(List.of(slotId)))
+                .thenReturn(List.of(sOther));
+
+        SubmitAvailabilityRequest req = new SubmitAvailabilityRequest();
+        req.setSlotIds(List.of(slotId));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.submitAvailability(memberId, companyId, periodId1, req)
+        ).isInstanceOf(IllegalStateException.class);
+
+        verify(scheduleSlotAvailabilityRepository, never()).saveAll(anyList());
+    }
+
+
+    // =====================================================================
+    // getAvailabilitySubmissionStatus
+    // =====================================================================
+    @Test
+    @DisplayName("가용 제출 현황 조회 - 고정근무자 제외, 제출 여부/시간 포함")
+    void getAvailabilitySubmissionStatus_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company, "P1", PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        // worker1 (제출 완료)
+        Member m1 = newMember("w1@test.com", "알바1");
+        UUID m1Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(m1, "id", m1Id);
+        CompanyMember cm1 = mock(CompanyMember.class);
+        when(cm1.getMember()).thenReturn(m1);
+        when(cm1.getId()).thenReturn(UUID.randomUUID());
+        when(cm1.isFixedShiftWorker()).thenReturn(false);
+
+        // worker2 (미제출)
+        Member m2 = newMember("w2@test.com", "알바2");
+        UUID m2Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(m2, "id", m2Id);
+        CompanyMember cm2 = mock(CompanyMember.class);
+        when(cm2.getMember()).thenReturn(m2);
+        when(cm2.getId()).thenReturn(UUID.randomUUID());
+        when(cm2.isFixedShiftWorker()).thenReturn(false);
+
+        // worker3 (고정 근무자 - 목록에서 제외)
+        Member m3 = newMember("w3@test.com", "알바3");
+        UUID m3Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(m3, "id", m3Id);
+        CompanyMember cm3 = mock(CompanyMember.class);
+        when(cm3.isFixedShiftWorker()).thenReturn(true);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(companyMemberRepository.findByCompanyIdAndRole(companyId, MembershipRole.WORKER))
+                .thenReturn(List.of(cm1, cm2, cm3));
+
+        // 제출 기록: m1, m3만 있음 (m3는 어차피 제외)
+        AvailabilitySubmission sub1 = AvailabilitySubmission.create(company, period, m1);
+        ReflectionTestUtils.setField(sub1, "submittedAt", LocalDateTime.now().minusHours(1));
+
+        AvailabilitySubmission sub3 = AvailabilitySubmission.create(company, period, m3);
+
+        when(availabilitySubmissionRepository.findByCompanyIdAndPeriodId(companyId, periodId))
+                .thenReturn(List.of(sub1, sub3));
+
+        // when
+        List<AvailabilitySubmissionStatusResponse> res =
+                scheduleService.getAvailabilitySubmissionStatus(ownerId, companyId, periodId);
+
+        // then
+        assertThat(res).hasSize(2); // m1, m2
+        var byId = res.stream().collect(Collectors.toMap(
+                AvailabilitySubmissionStatusResponse::getMemberId,
+                r -> r
+        ));
+
+        assertThat(byId.get(m1Id).isSubmitted()).isTrue();
+        assertThat(byId.get(m2Id).isSubmitted()).isFalse();
+        // m3Id 는 포함되지 않아야 함
+        assertThat(byId.containsKey(m3Id)).isFalse();
+    }
+
+    // =====================================================================
+    // autoAssignSchedules
+    // =====================================================================
+    @Test
+    @DisplayName("자동 배치 - 고정 근무자 제외 일반 근무자의 가용 슬롯에 랜덤 배치")
+    void autoAssignSchedules_basic_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company, "P1", PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        Member worker = newMember("w1@test.com", "알바1");
+        UUID workerId = UUID.randomUUID();
+        ReflectionTestUtils.setField(worker, "id", workerId);
+
+        CompanyMember cm = mock(CompanyMember.class);
+        when(cm.isFixedShiftWorker()).thenReturn(false);
+        when(cm.getMember()).thenReturn(worker);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+        when(companyMemberRepository.findByCompanyIdAndRole(companyId, MembershipRole.WORKER))
+                .thenReturn(List.of(cm));
+
+        // 고정 근무자는 없는 상황
+        when(fixedShiftRepository.findActiveInPeriod(any(), any(), any()))
+                .thenReturn(List.of());
+
+        // 역할
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+
+        CompanyMemberRole cmr = mock(CompanyMemberRole.class);
+        when(cmr.getRole()).thenReturn(role);
+        when(companyMemberRoleRepository.findByCompanyIdAndMemberId(companyId, workerId))
+                .thenReturn(List.of(cmr));
+
+        // 슬롯 1개
+        Schedule slot = Schedule.create(
+                company, period, role,
+                LocalDate.of(2025, 11, 17),
+                LocalTime.of(10, 0), LocalTime.of(14, 0),
+                1
+        );
+        UUID slotId = UUID.randomUUID();
+        ReflectionTestUtils.setField(slot, "id", slotId);
+
+        when(scheduleRepository.findByPeriod(period))
+                .thenReturn(List.of(slot));
+
+        // 가용 정보: worker가 slot에 willing
+        ScheduleSlotAvailability avail = ScheduleSlotAvailability.willing(slot, worker);
+        when(scheduleSlotAvailabilityRepository.findByPeriod(period))
+                .thenReturn(List.of(avail));
+
+        // when
+        scheduleService.autoAssignSchedules(ownerId, companyId, periodId);
+
+        // then : slot에 1명 배정되었는지 확인
+        assertThat(slot.getAssignments())
+                .hasSize(1)
+                .first()
+                .extracting(a -> a.getMember().getId())
+                .isEqualTo(workerId);
+    }
+
+    // =====================================================================
+    // updateScheduleAssignments
+    // =====================================================================
+    @Test
+    @DisplayName("수동 편성 반영 - 요청된 근무자들로 각 슬롯 배정")
+    void updateScheduleAssignments_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company, "P1", PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+
+        // 역할
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+
+        // 슬롯
+        Schedule slot = Schedule.create(
+                company, period, role,
+                LocalDate.of(2025, 11, 17),
+                LocalTime.of(10, 0), LocalTime.of(14, 0),
+                2
+        );
+        UUID slotId = UUID.randomUUID();
+        ReflectionTestUtils.setField(slot, "id", slotId);
+        when(scheduleRepository.findByPeriod(period)).thenReturn(List.of(slot));
+
+        // 근무자 2명
+        Member w1 = newMember("w1@test.com", "알바1");
+        UUID w1Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(w1, "id", w1Id);
+
+        Member w2 = newMember("w2@test.com", "알바2");
+        UUID w2Id = UUID.randomUUID();
+        ReflectionTestUtils.setField(w2, "id", w2Id);
+
+        CompanyMember cm1 = mock(CompanyMember.class);
+        when(cm1.getRole()).thenReturn(MembershipRole.WORKER);
+        when(cm1.isFixedShiftWorker()).thenReturn(false);
+        when(cm1.getMember()).thenReturn(w1);
+
+        CompanyMember cm2 = mock(CompanyMember.class);
+        when(cm2.getRole()).thenReturn(MembershipRole.WORKER);
+        when(cm2.isFixedShiftWorker()).thenReturn(false);
+        when(cm2.getMember()).thenReturn(w2);
+
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, w1Id))
+                .thenReturn(Optional.of(cm1));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, w2Id))
+                .thenReturn(Optional.of(cm2));
+
+        // 역할 수행 가능 설정(canWorkRole 내부에서 조회)
+        CompanyMemberRole cmr1 = mock(CompanyMemberRole.class);
+        when(cmr1.getRole()).thenReturn(role);
+        when(companyMemberRoleRepository.findByCompanyIdAndMemberId(companyId, w1Id))
+                .thenReturn(List.of(cmr1));
+        when(companyMemberRoleRepository.findByCompanyIdAndMemberId(companyId, w2Id))
+                .thenReturn(List.of(cmr1));
+
+        // 요청 DTO
+        UpdateScheduleAssignmentsRequest.Item item = new UpdateScheduleAssignmentsRequest.Item();
+        item.setScheduleId(slotId);
+        item.setMemberIds(List.of(w1Id, w2Id));
+
+        UpdateScheduleAssignmentsRequest req = new UpdateScheduleAssignmentsRequest();
+        req.setItems(List.of(item));
+
+        // when
+        scheduleService.updateScheduleAssignments(ownerId, companyId, periodId, req);
+
+        // then
+        assertThat(slot.getAssignments()).hasSize(2);
+        assertThat(slot.getAssignments())
+                .extracting(a -> a.getMember().getId())
+                .containsExactlyInAnyOrder(w1Id, w2Id);
+    }
+
+    @Test
+    @DisplayName("수동 편성 반영 - 필요 인원보다 많이 배치하면 예외")
+    void updateScheduleAssignments_tooManyMembers_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        // 기간(DRAFT)
+        SchedulePeriod period = SchedulePeriod.create(
+                company, "P1", PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+
+        // 역할 + 슬롯(정원 1명)
+        CompanyRole role = newRole(company, "홀");
+        UUID roleId = UUID.randomUUID();
+        ReflectionTestUtils.setField(role, "id", roleId);
+
+        Schedule slot = Schedule.create(
+                company, period, role,
+                LocalDate.of(2025, 11, 17),
+                LocalTime.of(10, 0), LocalTime.of(14, 0),
+                1   // 정원 1명
+        );
+        UUID slotId = UUID.randomUUID();
+        ReflectionTestUtils.setField(slot, "id", slotId);
+        when(scheduleRepository.findByPeriod(period)).thenReturn(List.of(slot));
+
+        // 🔹 슬롯에 배치하려는 멤버 두 명 (UUID만 있으면 됨)
+        UUID m1 = UUID.randomUUID();
+        UUID m2 = UUID.randomUUID();
+
+        CompanyMember cm1 = mock(CompanyMember.class);
+        CompanyMember cm2 = mock(CompanyMember.class);
+
+        // 둘 다 WORKER + 고정 근무자 아님으로 세팅
+        when(cm1.getRole()).thenReturn(MembershipRole.WORKER);
+        when(cm1.isFixedShiftWorker()).thenReturn(false);
+        when(cm2.getRole()).thenReturn(MembershipRole.WORKER);
+        when(cm2.isFixedShiftWorker()).thenReturn(false);
+
+        // 회사 소속이라고 리포지토리 스텁
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, m1))
+                .thenReturn(Optional.of(cm1));
+        when(companyMemberRepository.findByCompanyIdAndMemberId(companyId, m2))
+                .thenReturn(Optional.of(cm2));
+
+        // 요청: 정원 1명인 슬롯에 2명 넣기
+        UpdateScheduleAssignmentsRequest.Item item = new UpdateScheduleAssignmentsRequest.Item();
+        item.setScheduleId(slotId);
+        item.setMemberIds(List.of(m1, m2)); // 2명 (정원 초과)
+
+        UpdateScheduleAssignmentsRequest req = new UpdateScheduleAssignmentsRequest();
+        req.setItems(List.of(item));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.updateScheduleAssignments(ownerId, companyId, periodId, req)
+        ).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(slot.getAssignments()).isEmpty();
+    }
+
+
+    // =====================================================================
+    // publishSchedulePeriod
+    // =====================================================================
+    @Test
+    @DisplayName("근무표 확정 - DRAFT 상태에서 publish 호출")
+    void publishSchedulePeriod_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = spy(SchedulePeriod.create(
+                company, "P1", PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        ));
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+
+        // when
+        scheduleService.publishSchedulePeriod(ownerId, companyId, periodId);
+
+        // then
+        verify(period, times(1)).publish(company.getOwner());
+    }
+
+    @Test
+    @DisplayName("근무표 확정 - DRAFT가 아니면 예외")
+    void publishSchedulePeriod_notDraft_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        SchedulePeriod period = SchedulePeriod.create(
+                company, "P1", PeriodType.WEEKLY,
+                LocalDate.of(2025, 11, 17),
+                LocalDate.of(2025, 11, 23),
+                LocalDateTime.now().plusDays(1)
+        );
+        UUID periodId = UUID.randomUUID();
+        ReflectionTestUtils.setField(period, "id", periodId);
+        // 상태를 PUBLISHED 로 강제
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.PUBLISHED);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+        when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.publishSchedulePeriod(ownerId, companyId, periodId)
+        ).isInstanceOf(IllegalStateException.class);
     }
 }
