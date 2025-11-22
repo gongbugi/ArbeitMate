@@ -1002,6 +1002,14 @@ public class ScheduleService {
         // 4. 이 매장의 WORKER 중 고정근무자가 아닌 사람들
         List<CompanyMember> workers = companyMemberRepository.findByCompanyIdAndRole(companyId, MembershipRole.WORKER);
 
+        // 고정 근무 여부 맵핑
+        Map<UUID, Boolean> fixedWorkerMap = workers.stream()
+                .collect(Collectors.toMap(
+                        cm -> cm.getMember().getId(),
+                        CompanyMember::isFixedShiftWorker
+                ));
+
+        // 고정 근무자 아닌 대상자들
         List<CompanyMember> targetWorkers = workers.stream()
                 .filter(cm -> !cm.isFixedShiftWorker())
                 .toList();
@@ -1009,7 +1017,7 @@ public class ScheduleService {
         if (targetWorkers.isEmpty()) {
             // 고정 근무자만 있는 경우 return
             return schedules.stream()
-                    .map(ScheduleAssignmentSlotResponse::from)
+                    .map(s -> ScheduleAssignmentSlotResponse.from(s, fixedWorkerMap))
                     .toList();
         }
 
@@ -1073,7 +1081,7 @@ public class ScheduleService {
 
         // 8. 최종 배치 결과 반환
         return schedules.stream()
-                .map(ScheduleAssignmentSlotResponse::from)
+                .map(s -> ScheduleAssignmentSlotResponse.from(s, fixedWorkerMap))
                 .toList();
     }
 
@@ -1106,6 +1114,16 @@ public class ScheduleService {
         }
         Map<UUID, Schedule> scheduleMap = schedules.stream()
                 .collect(Collectors.toMap(Schedule::getId, s -> s));
+
+        // 고정 근무자 목록 매핑
+        List<CompanyMember> workers = companyMemberRepository
+                .findByCompanyIdAndRole(companyId, MembershipRole.WORKER);
+
+        Map<UUID, Boolean> fixedWorkerMap = workers.stream()
+                .collect(Collectors.toMap(
+                        cm -> cm.getMember().getId(),
+                        CompanyMember::isFixedShiftWorker
+                ));
 
         // 기존 Assignment 전체 제거
         for (Schedule s : schedules) {
@@ -1169,7 +1187,7 @@ public class ScheduleService {
 
         // 최종 상태 반환
         return schedules.stream()
-                .map(ScheduleAssignmentSlotResponse::from)
+                .map(s -> ScheduleAssignmentSlotResponse.from(s, fixedWorkerMap))
                 .toList();
     }
 
