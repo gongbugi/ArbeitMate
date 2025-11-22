@@ -217,4 +217,44 @@ public class ScheduleController {
         var res = scheduleService.getAvailabilitySubmissionStatus(principal.memberId(), companyId, periodId);
         return ResponseEntity.ok(res);
     }
+
+    /**
+     * 자동 편성 실행
+     */
+    @PostMapping("/{periodId}/auto-assign")
+    public ResponseEntity<List<ScheduleAssignmentSlotResponse>> autoAssignSchedules(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId) {
+
+        var result = scheduleService.autoAssignSchedules(principal.memberId(), companyId, periodId);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 수동 편성 반영
+     */
+    @PutMapping("/{periodId}/assignments")
+    public ResponseEntity<List<ScheduleAssignmentSlotResponse>> updateScheduleAssignments(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId,
+            @Valid @RequestBody UpdateScheduleAssignmentsRequest request) {
+
+        var result = scheduleService.updateScheduleAssignments(principal.memberId(), companyId, periodId, request);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 근무표 확정 (게시)
+     */
+    @PostMapping("/{periodId}/publish")
+    public ResponseEntity<Void> publishSchedulePeriod(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId) {
+
+        scheduleService.publishSchedulePeriod(principal.memberId(), companyId, periodId);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }
