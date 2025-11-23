@@ -1,8 +1,34 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function WorkplaceSelectScreen({ navigation }) {
+
+  const fetchWorkplaces = async () => {
+    try {
+      const res = await fetch("http://13.209.21.34:8080/api/company/my", {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) {
+        console.log("근무지 조회 실패");
+        return;
+      }
+
+      const data = await res.json();
+      setWorkplaces(data); // 리스트 저장
+
+    } catch (err) {
+      console.log("서버 오류:", err);
+    }
+  };
+
+  // 화면 처음 로드 or 등록 후 refresh → 자동 새로고침
+  useEffect(() => {
+    fetchWorkplaces();
+  }, [route.params?.refresh]);
+
   return (
     <View style={styles.container}>
 

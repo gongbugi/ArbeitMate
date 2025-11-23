@@ -19,6 +19,43 @@ export default function WorkplaceAddScreen({ navigation , setRole }) {
   const [category, setCategory] = useState("");
   const [phone, setPhone] = useState("");
 
+  const handleRegister = async () => {
+    if (!name || !address || !businessType || !phone) {
+      Alert.alert("입력 오류", "모든 항목을 입력해주세요.");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://..../company", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: storeName,
+          address: address,
+          businessType: category,
+          phone: phone,
+        }),
+      });
+
+      if (!res.ok) {
+        Alert.alert("등록 실패", "서버 오류가 발생했습니다.");
+        return;
+      }
+
+      const data = await res.json();
+
+      Alert.alert("등록 완료", "근무지가 등록되었습니다.");
+
+      // 등록 후 근무지 선택 화면으로 이동
+      // 그리고 새로고침(재조회)을 위해 파라미터 전달
+      navigation.navigate("WorkplaceSelectScreen", { refresh: true });
+
+    } catch (err) {
+      console.log(err);
+      Alert.alert("오류", "서버와 연결할 수 없습니다.");
+    }
+  };
+
   return (
     <View style={styles.container}>
 
