@@ -64,6 +64,150 @@ class ScheduleServiceTest {
     // createWeeklyPeriod
     // =====================================================================
     @Test
+    @DisplayName("커스텀 기간 생성 - 7일 이상이면 정상 생성")
+    void createPeriod_success() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        LocalDate start = LocalDate.of(2025, 11, 17); // 월
+        LocalDate end   = LocalDate.of(2025, 11, 23); // 일 (포함 7일)
+
+        CreatePeriodRequest req = new CreatePeriodRequest();
+        req.setName("11월 3주차");
+        req.setStartDate(start);
+        req.setEndDate(end);
+        req.setAvailabilityDueAt(LocalDateTime.of(2025, 11, 16, 23, 0));
+
+        when(schedulePeriodRepository.existsOverlapping(companyId, start, end))
+                .thenReturn(false);
+
+        // when
+        SchedulePeriodResponse res =
+                scheduleService.createPeriod(ownerId, companyId, req);
+
+        // then
+        assertThat(res.getName()).isEqualTo("11월 3주차");
+        assertThat(res.getStartDate()).isEqualTo(start);
+        assertThat(res.getEndDate()).isEqualTo(end);
+        assertThat(res.getPeriodType()).isEqualTo(PeriodType.CUSTOM);
+
+        verify(schedulePeriodRepository).existsOverlapping(companyId, start, end);
+        verify(schedulePeriodRepository).save(any(SchedulePeriod.class));
+    }
+
+    @Test
+    @DisplayName("커스텀 기간 생성 - 7일 미만이면 예외")
+    void createPeriod_tooShort_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        LocalDate start = LocalDate.of(2025, 11, 17);
+        LocalDate end   = LocalDate.of(2025, 11, 22); // 포함 6일
+
+        CreatePeriodRequest req = new CreatePeriodRequest();
+        req.setName("너무 짧은 기간");
+        req.setStartDate(start);
+        req.setEndDate(end);
+        req.setAvailabilityDueAt(LocalDateTime.of(2025, 11, 16, 23, 0));
+
+        // when & then
+        assertThatThrownBy(() -> scheduleService.createPeriod(ownerId, companyId, req))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // 기간 검증에서 바로 걸리므로, 겹침 검증/저장은 호출되지 않아야 함
+        verify(schedulePeriodRepository, never()).existsOverlapping(any(), any(), any());
+        verify(schedulePeriodRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("커스텀 기간 생성 - 종료일이 시작일보다 빠르면 예외")
+    void createPeriod_endBeforeStart_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        LocalDate start = LocalDate.of(2025, 11, 23);
+        LocalDate end   = LocalDate.of(2025, 11, 17);
+
+        CreatePeriodRequest req = new CreatePeriodRequest();
+        req.setName("역전된 기간");
+        req.setStartDate(start);
+        req.setEndDate(end);
+        req.setAvailabilityDueAt(LocalDateTime.of(2025, 11, 16, 23, 0));
+
+        // when & then
+        assertThatThrownBy(() -> scheduleService.createPeriod(ownerId, companyId, req))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(schedulePeriodRepository, never()).existsOverlapping(any(), any(), any());
+        verify(schedulePeriodRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("커스텀 기간 생성 - 기존 기간과 겹치면 예외")
+    void createPeriod_overlapping_throws() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        Member owner = newMember("owner@test.com", "사장");
+        ReflectionTestUtils.setField(owner, "id", ownerId);
+
+        UUID companyId = UUID.randomUUID();
+        Company company = newCompany("카페 A", owner, "서울", "CODE1");
+        ReflectionTestUtils.setField(company, "id", companyId);
+
+        when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
+
+        LocalDate start = LocalDate.of(2025, 11, 17);
+        LocalDate end   = LocalDate.of(2025, 11, 23); // 7일 이상
+
+        CreatePeriodRequest req = new CreatePeriodRequest();
+        req.setName("겹치는 기간");
+        req.setStartDate(start);
+        req.setEndDate(end);
+        req.setAvailabilityDueAt(LocalDateTime.of(2025, 11, 16, 23, 0));
+
+        when(schedulePeriodRepository.existsOverlapping(companyId, start, end))
+                .thenReturn(true);
+
+        // when & then
+        assertThatThrownBy(() ->
+                scheduleService.createPeriod(ownerId, companyId, req)
+        )
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("이미 다른 스케줄 기간이 존재");
+
+        verify(schedulePeriodRepository).existsOverlapping(companyId, start, end);
+        verify(schedulePeriodRepository, never()).save(any());
+    }
+
+
+    // =====================================================================
+    // createWeeklyPeriod
+    // =====================================================================
+    @Test
     @DisplayName("주간 스케쥴 기간을 사장이 생성하면, 시작일+6일까지 DRAFT 상태로 생성된다")
     void createWeeklyPeriod_owner_success() {
         // given
