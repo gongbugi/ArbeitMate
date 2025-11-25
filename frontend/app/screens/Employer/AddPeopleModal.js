@@ -13,6 +13,21 @@ import axios from "axios";
 export default function AddPeopleModal({ visible, onClose }) {
   const [count, setCount] = useState(0);
 
+  async function savePeople() {
+  try {
+    await axios.post(`.../api/schedules/people`, {
+      day,
+      task,
+      time,
+      needPeople: count
+    });
+
+    onClose();
+  } catch (e) {
+    console.log(e);
+  }
+}
+
   return (
     <Modal visible={visible} transparent animationType="fade">
 

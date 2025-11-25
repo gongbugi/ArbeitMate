@@ -1,9 +1,20 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
 
-export default function E_ScheduleAutoAddSummaryScreen({ navigation }) {
+export default function E_ScheduleAutoAddSummaryScreen({ navigation, route }) {
   const days = ["월", "화", "수", "목", "금", "토", "일"];
+  const period = route.params?.period || "기간을 선택하세요";
+  
+  const submitSchedule = async () => {
+    try {
+      const res = await axios.post(`${BASE_URL}/api/schedules/submit`);
+      console.log(res.data);
+      alert("근무표가 생성되었습니다!");
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -18,7 +29,7 @@ export default function E_ScheduleAutoAddSummaryScreen({ navigation }) {
       </View>
 
       {/* 기간 */}
-      <Text style={styles.period}>10.18 (토) - 10.24 (금)</Text>
+      <Text style={styles.period}>{period}</Text>
 
       {/* 카드 */}
       <View style={styles.card}>

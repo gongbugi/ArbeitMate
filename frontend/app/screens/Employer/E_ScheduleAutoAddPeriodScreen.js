@@ -11,7 +11,7 @@ export default function E_ScheduleAutoAddPeriodScreen({ navigation }) {
 
   async function savePeriod() {
   try {
-    const res = await axios.post(`${BASE_URL}/api/schedules/period`, {
+    const res = await axios.post(`.../api/schedules/period`, {
       startDate: selectedStart,
       endDate: selectedEnd,
       defaultPeople: needPeople

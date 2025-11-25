@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronRight } from "lucide-react-native";
 export default function E_ScheduleAutoAddWeekdayScreen({ navigation, route }) {
 
   const days = ["월", "화", "수", "목", "금", "토", "일"];
-
+const [selectedDate, setSelectedDate] = useState("");
   const period = route.params?.period || "기간을 선택하세요";
 
   return (
@@ -32,18 +32,16 @@ export default function E_ScheduleAutoAddWeekdayScreen({ navigation, route }) {
 
         {/* 필요 인원 */}
         <Text style={styles.sectionTitle}>필요 인원</Text>
-        <View style={styles.box}>
-          <Text style={styles.boxText}>요일별로 입력</Text>
-        </View>
+
 
         {/* 요일 리스트 */}
         <View style={styles.dayList}>
           {days.map((day, idx) => (
             <TouchableOpacity key={idx} style={styles.dayRow}
-            onPress={() => navigation.navigate("E_ScheduleAutoAddPeopleScreen", {
-            day: day,  
-            period: period, 
-          })}>
+              onPress={() => navigation.navigate("E_ScheduleAutoAddPeopleScreen", {
+                day: day,
+                period: period,
+              })}>
               <Text style={styles.dayText}>{day}</Text>
               <ChevronRight size={28} color="#999" />
             </TouchableOpacity>
@@ -53,7 +51,12 @@ export default function E_ScheduleAutoAddWeekdayScreen({ navigation, route }) {
       </ScrollView>
 
       {/* 저장 버튼 */}
-      <TouchableOpacity style={styles.saveBtn}>
+      <TouchableOpacity style={styles.saveBtn}
+        onPress={() => {
+          navigation.navigate("E_ScheduleAutoAddSummaryScreen", {
+            period: period,  // 선택한 기간을 전달
+          });
+        }}>
         <Text style={styles.saveText}>저장</Text>
       </TouchableOpacity>
 
