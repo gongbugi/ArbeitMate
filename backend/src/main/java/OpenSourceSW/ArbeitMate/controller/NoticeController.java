@@ -44,7 +44,7 @@ public class NoticeController {
     public ResponseEntity<NoticeResponse> getNotice(
             @PathVariable UUID companyId,
             @PathVariable UUID noticeId) {
-        return ResponseEntity.ok(noticeService.getNotice(noticeId));
+        return ResponseEntity.ok(noticeService.getNotice(companyId, noticeId));
     }
 
     // 공지사항 삭제
@@ -53,7 +53,7 @@ public class NoticeController {
     public ResponseEntity<String> deleteNotice(
             @PathVariable UUID companyId,
             @PathVariable UUID noticeId) {
-        noticeService.deleteNotice(noticeId);
+        noticeService.deleteNotice(companyId, noticeId);
         return ResponseEntity.ok("공지사항 삭제 완료");
     }
 }

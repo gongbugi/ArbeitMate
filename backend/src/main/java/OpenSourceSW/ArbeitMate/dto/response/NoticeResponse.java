@@ -1,6 +1,6 @@
 package OpenSourceSW.ArbeitMate.dto.response;
 
-import OpenSourceSW.ArbeitMate.domain.Notice;
+import OpenSourceSW.ArbeitMate.domain.CompanyNotice;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -13,11 +13,15 @@ public class NoticeResponse {
     private String writerName;
     private LocalDateTime createdAt;
 
-    public NoticeResponse(Notice notice) {
+    public NoticeResponse(CompanyNotice notice) {
         this.id = notice.getId().toString();
         this.title = notice.getTitle();
         this.content = notice.getContent();
         this.writerName = notice.getCreatedBy().getName();
         this.createdAt = notice.getCreatedAt();
+    }
+
+    public static NoticeResponse from(CompanyNotice notice) {
+        return new NoticeResponse(notice);
     }
 }

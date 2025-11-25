@@ -1,13 +1,13 @@
 package OpenSourceSW.ArbeitMate.service;
 
 import OpenSourceSW.ArbeitMate.domain.Company;
+import OpenSourceSW.ArbeitMate.domain.CompanyNotice;
 import OpenSourceSW.ArbeitMate.domain.Member;
-import OpenSourceSW.ArbeitMate.domain.Notice;
 import OpenSourceSW.ArbeitMate.dto.request.NoticeRequest;
 import OpenSourceSW.ArbeitMate.dto.response.NoticeResponse;
+import OpenSourceSW.ArbeitMate.repository.CompanyNoticeRepository;
 import OpenSourceSW.ArbeitMate.repository.CompanyRepository;
 import OpenSourceSW.ArbeitMate.repository.MemberRepository;
-import OpenSourceSW.ArbeitMate.repository.NoticeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class NoticeService {
 
-    private final NoticeRepository noticeRepository;
+    private final CompanyNoticeRepository companyNoticeRepository;
     private final MemberRepository memberRepository;
     private final CompanyRepository companyRepository;
 
@@ -34,33 +34,49 @@ public class NoticeService {
         Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> new IllegalArgumentException("매장을 찾을 수 없습니다."));
 
-        Notice notice = Notice.builder()
-                .title(request.getTitle())
-                .content(request.getContent())
-                .createdBy(member)
-                .company(company)
-                .build();
 
-        return noticeRepository.save(notice).getId();
+
+        CompanyNotice notice = CompanyNotice.create(
+                company,
+                member,
+                request.getTitle(),
+                request.getContent()
+        );
+
+        return companyNoticeRepository.save(notice).getId();
     }
 
     // 매장별 공지사항 목록 조회
     public List<NoticeResponse> getCompanyNotices(UUID companyId) {
-        return noticeRepository.findAllByCompanyIdOrderByCreatedAtDesc(companyId).stream()
-                .map(NoticeResponse::new)
+        List<CompanyNotice> notices = companyNoticeRepository.findByCompanyIdOrderByCreatedAtDesc(companyId);
+
+        return notices.stream()
+                .map(NoticeResponse::from)
                 .collect(Collectors.toList());
     }
 
     // 공지사항 상세 조회
-    public NoticeResponse getNotice(UUID noticeId) {
-        Notice notice = noticeRepository.findById(noticeId)
+    public NoticeResponse getNotice(UUID companyId, UUID noticeId) {
+        CompanyNotice notice = companyNoticeRepository.findById(noticeId)
                 .orElseThrow(() -> new IllegalArgumentException("공지사항이 존재하지 않습니다."));
+
+        if (!notice.getCompany().getId().equals(companyId)) {
+            throw new IllegalStateException("해당 매장의 공지사항이 아닙니다.");
+        }
+
         return new NoticeResponse(notice);
     }
 
     // 공지사항 삭제 (추가 기능)
     @Transactional
-    public void deleteNotice(UUID noticeId) {
-        noticeRepository.deleteById(noticeId);
+    public void deleteNotice(UUID companyId, UUID noticeId) {
+        CompanyNotice notice = companyNoticeRepository.findById(noticeId)
+                .orElseThrow(() -> new IllegalArgumentException("공지사항이 존재하지 않습니다."));
+
+        if (!notice.getCompany().getId().equals(companyId)) {
+            throw new IllegalStateException("해당 매장의 공지사항이 아닙니다.");
+        }
+
+        companyNoticeRepository.deleteById(noticeId);
     }
 }
