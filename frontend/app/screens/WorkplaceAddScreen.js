@@ -11,7 +11,7 @@ import { ArrowLeft } from "lucide-react-native";
 
 export default function WorkplaceAddScreen({ navigation , setRole }) {
   const handleCreate = () => {
-    // 근무지 생성 로직 (DB 저장 등)dss
+    // 근무지 생성 로직 (DB 저장 등)dsssc
     setRole("employer");    // 역할 확정
   };
   const [storeName, setStoreName] = useState("");

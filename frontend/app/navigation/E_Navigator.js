@@ -14,6 +14,8 @@ import E_ScheduleAutoAddSummaryScreen from "../screens/Employer/E_ScheduleAutoAd
 import E_ScheduleAutoAddWeekdayScreen from "../screens/Employer/E_ScheduleAutoAddWeekdayScreen.js";
 import ScheduleScreen from "../screens/ScheduleScreen.js";
 import E_InformationScreen from "../screens/Employer/E_InformationScreen";
+import AddPeopleModal from "../screens/Employer/AddPeopleModal.js";
+import E_ScheduleAutoAddPeopleScreen from "../screens/Employer/E_ScheduleAutoAddPeopleScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -33,7 +35,8 @@ export default function E_Navigator() {
       <Stack.Screen name="E_ScheduleAutoAddWeekdayScreen" component={E_ScheduleAutoAddWeekdayScreen} />
       <Stack.Screen name="ScheduleScreen" component={ScheduleScreen} />
       <Stack.Screen name="E_InformationScreen" component={E_InformationScreen} />
-
+      <Stack.Screen name="AddPeopleModal" component={AddPeopleModal} />
+      <Stack.Screen name="E_ScheduleAutoAddPeopleScreen" component={E_ScheduleAutoAddPeopleScreen} />
       {/* 필요 스크린 계속 추가 */}
     </Stack.Navigator>
   );
