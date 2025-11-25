@@ -15,7 +15,7 @@ export default function WorkerManageScreen({ navigation }) {
 
     const loadWorkers = async () => {
         try {
-            const res = await axios.get(`.../workers`);
+            const res = await axios.get(`${BASE_URL}/workers`);
             setWorkers(res.data);
         } catch (err) {
             console.log("근무자 목록 불러오기 오류:", err);
@@ -44,7 +44,7 @@ export default function WorkerManageScreen({ navigation }) {
                 <View style={styles.rowItem}>
                     <TouchableOpacity
                         style={styles.editBtn}
-                        onPress={() => navigation.navigate("E_WerkerUpdateScreen")}>
+                        onPress={() => navigation.navigate("E_WorkerUpdateScreen")}>
                         <Text style={styles.nameText}>김XX</Text>
                         <ChevronRight size={32} color="#999" />
                     </TouchableOpacity>
@@ -101,9 +101,9 @@ const styles = StyleSheet.create({
 
     /* Edit Button */
     editBtn: {
-        width: "100%",                  
+        width: "100%",
         flexDirection: "row",
-        justifyContent: "space-between", 
+        justifyContent: "space-between",
         alignItems: "center",
     },
     editIcon: {

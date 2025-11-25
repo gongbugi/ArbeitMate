@@ -11,7 +11,7 @@ import axios from "axios";
 
 const BASE_URL = "http://<백엔드-서버-IP>:8080";
 
-export default function E_WerkerTimeUpdateScreen({ navigation }) {
+export default function E_WorkerTimeUpdateScreen({ navigation }) {
     const { workerId } = route.params;
     const [time, setTime] = useState("");
     const [day, setDay] = useState("");

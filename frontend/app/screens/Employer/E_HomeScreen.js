@@ -55,7 +55,7 @@ export default function E_HomeScreen({ navigation }) {
 
         {/* 근무자 */}
         <TouchableOpacity style={styles.menuCard}
-        onPress={() => navigation.navigate("E_WerkerManageScreen")}>
+        onPress={() => navigation.navigate("E_WorkerManageScreen")}>
           <Text style={styles.menuText}>근무자</Text>
           <ChevronRight size={32} color="#999" />
         </TouchableOpacity>

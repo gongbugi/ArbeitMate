@@ -11,7 +11,7 @@ import axios from "axios";
 
 const BASE_URL = "http://<백엔드-서버-IP>:8080";
 
-export default function E_WerkerTimeScreen({ navigation }) {
+export default function E_WorkerTimeScreen({ navigation }) {
     const { workerId } = route.params;
     const [fixedTimes, setFixedTimes] = useState([]);
 
@@ -34,7 +34,7 @@ export default function E_WerkerTimeScreen({ navigation }) {
 
                 <Text style={styles.headerTitle}>고정 근무 시간</Text>
 
-                <TouchableOpacity onPress={() => navigation.navigate("E_WerkerTimeUpdateScreen")}>
+                <TouchableOpacity onPress={() => navigation.navigate("E_WorkerTimeUpdateScreen")}>
                     <Text style={styles.addText}>추가</Text>
                 </TouchableOpacity>
             </View>
