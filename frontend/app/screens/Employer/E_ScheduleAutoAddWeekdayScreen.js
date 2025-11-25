@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { ArrowLeft, ChevronRight } from "lucide-react-native";
 
-export default function E_ScheduleAutoAddWeekdayScreen({ navigation }) {
+export default function E_ScheduleAutoAddWeekdayScreen({ navigation, route }) {
+
   const days = ["월", "화", "수", "목", "금", "토", "일"];
+
+  const period = route.params?.period || "기간을 선택하세요";
 
   return (
     <View style={styles.container}>
@@ -24,7 +27,7 @@ export default function E_ScheduleAutoAddWeekdayScreen({ navigation }) {
         {/* 기간 */}
         <Text style={styles.sectionTitle}>기간</Text>
         <View style={styles.box}>
-          <Text style={styles.boxText}>10.18 (토) - 10.24 (금)</Text>
+          <Text style={styles.boxText}>{period}</Text>
         </View>
 
         {/* 필요 인원 */}
@@ -36,10 +39,11 @@ export default function E_ScheduleAutoAddWeekdayScreen({ navigation }) {
         {/* 요일 리스트 */}
         <View style={styles.dayList}>
           {days.map((day, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={styles.dayRow}
-            >
+            <TouchableOpacity key={idx} style={styles.dayRow}
+            onPress={() => navigation.navigate("E_ScheduleAutoAddPeopleScreen", {
+            day: day,  
+            period: period, 
+          })}>
               <Text style={styles.dayText}>{day}</Text>
               <ChevronRight size={28} color="#999" />
             </TouchableOpacity>
@@ -56,6 +60,7 @@ export default function E_ScheduleAutoAddWeekdayScreen({ navigation }) {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
