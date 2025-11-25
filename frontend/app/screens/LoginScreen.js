@@ -5,22 +5,33 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Alert, // 알림창 추가
 } from "react-native";
-import { loginApi } from "../services/auth";
+import { loginApi } from "../services/auth"; // 작성한 api 함수 불러오기
 
-export default function LoginScreen({ navigation, onLogin }) {
-  const [loginId, setLoginId] = useState("");
+export default function LoginScreen({ navigation }) {
+  // 아이디(이메일), 비밀번호 상태 관리
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLoginPress = async () => {
-    try {
-      const userData = await loginApi(loginId, password);
+  const handleLogin = async () => {
+    // 1. 빈칸 검사
+    if (!email || !password) {
+      Alert.alert("입력 오류", "아이디와 비밀번호를 입력해주세요.");
+      return;
+    }
 
-      // userData 안에 token, userId, role 이 들어있음
-      onLogin(userData);
+    try {
+      // 2. 로그인 API 호출 (성공하면 토큰도 저장됨)
+      await loginApi(email, password);
+
+      // 3. 성공 시 다음 화면(근무지 선택)으로 이동
+      // refresh: true를 보내서 근무지 목록을 새로고침하게 함
+      navigation.navigate("WorkplaceSelectScreen", { refresh: true });
 
     } catch (err) {
-      Alert.alert("로그인 실패", "아이디 또는 비밀번호가 잘못됐습니다.");
+      // 4. 실패 시 에러 처리
+      Alert.alert("로그인 실패", "이메일 또는 비밀번호를 확인해주세요.");
     }
   };
   
@@ -33,9 +44,13 @@ export default function LoginScreen({ navigation, onLogin }) {
       {/* 아이디 입력 */}
       <View style={styles.inputBox}>
         <TextInput
-          placeholder="아이디"
+          placeholder="아이디 (이메일)"
           placeholderTextColor="#9CA3AF"
           style={styles.input}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
         />
       </View>
 
@@ -46,17 +61,21 @@ export default function LoginScreen({ navigation, onLogin }) {
           placeholderTextColor="#9CA3AF"
           secureTextEntry
           style={styles.input}
+          value={password}
+          onChangeText={setPassword}
         />
       </View>
 
       {/* 로그인 버튼 */}
-      <TouchableOpacity style={styles.loginButton}
-      onPress={() => navigation.navigate("WorkplaceSelectScreen")}> //테스트용
+      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.loginText}>로그인</Text>
       </TouchableOpacity>
 
-      {/* 회원가입 */}
-      <TouchableOpacity style={styles.signupContainer}>
+      {/* 회원가입 버튼 (가입 화면으로 이동) */}
+      <TouchableOpacity 
+        style={styles.signupContainer}
+        onPress={() => navigation.navigate("SignScreen")} // 회원가입 화면 연결
+      >
         <Text style={styles.signupText}>회원가입</Text>
       </TouchableOpacity>
 
@@ -86,7 +105,7 @@ const styles = StyleSheet.create({
     height: 64,       // h-16
     justifyContent: "center",
     paddingHorizontal: 16, // px-4
-    marginBottom: 24,      // mb-6 (비번은 아래서 조정됨)
+    marginBottom: 24,      // mb-6
   },
 
   input: {
