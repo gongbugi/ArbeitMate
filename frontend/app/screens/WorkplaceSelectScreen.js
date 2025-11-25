@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  FlatList,
+  Dimensions,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import client from "../services/api";
 
-export default function WorkplaceSelectScreen({ navigation, route }) {
+const { width } = Dimensions.get("window");
+const LAYOUT_PADDING = 24;
+const ITEM_SPACING = 16;
+const CARD_WIDTH = (width - ITEM_SPACING - (LAYOUT_PADDING * 2)) / 2;
+
+export default function WorkplaceSelectScreen({ navigation, route, setRole }) {
   const [workplaces, setWorkplaces] = useState([]);
   
   const fetchWorkplaces = async () => {
@@ -12,12 +23,56 @@ export default function WorkplaceSelectScreen({ navigation, route }) {
       setWorkplaces(res.data);
     } catch (err) {
       console.log("근무지 조회 실패:", err);
+      setWorkplaces([
+        { companyId: "uuid-3", name: "이마트 성수점", role: "WORKER" },
+      ]);
     }
   };
 
   useEffect(() => {
     fetchWorkplaces();
   }, [route.params?.refresh]);
+
+  const handleSelectWorkplace = (workplace) => {
+    if(workplace.role === "OWNER") {
+      setRole("employer");
+    } else {
+      setRole("worker")
+    }
+  }
+
+  const dataToRender = [
+    ...workplaces, 
+    { id: "ADD_BUTTON", type: "ADD" }
+  ];
+
+  const renderItem = ({ item }) => {
+    // 1. '추가 버튼' 렌더링
+    if (item.type === "ADD") {
+      return (
+        <TouchableOpacity
+          style={[styles.card, styles.addCard]}
+          onPress={() => navigation.navigate("WorkplaceRegisterScreen")}
+        >
+          <Ionicons name="add" size={48} color="#555" />
+          <Text style={styles.workplaceRole}>신규등록</Text>
+        </TouchableOpacity>
+      );
+    }
+
+    // 2. '근무지 카드' 렌더링
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => handleSelectWorkplace(item)}
+      >
+        <Text style={styles.workplaceName}>{item.name}</Text>
+        <Text style={styles.workplaceRole}>
+          {item.role === "OWNER" ? "고용주" : "근무자"}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -27,13 +82,18 @@ export default function WorkplaceSelectScreen({ navigation, route }) {
         <Text style={styles.headerText}>근무지</Text>
       </View>
 
-      {/* Add Button Card */}
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => navigation.navigate("WorkplaceRegisterScreen")}
-      >
-        <Ionicons name="add" size={56} color="#555" />
-      </TouchableOpacity>
+      {/* Grid List */}
+      <FlatList
+        data={dataToRender}
+        keyExtractor={(item) => item.companyId || item.id}
+        numColumns={2} // 2열 종대 설정
+        columnWrapperStyle={styles.row} // 열 사이 간격 스타일
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        renderItem={renderItem}
+      />
+
+
     </View>
   );
 }
@@ -43,31 +103,59 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F4F4F5",
     paddingTop: 80,
-    alignItems: "center",
+    paddingHorizontal: LAYOUT_PADDING,
   },
 
   header: {
-    marginBottom: 40,
+    marginBottom: 30,
+    alignItems: 'center',
   },
 
   headerText: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: "bold",
     color: "#000",
   },
 
+  listContent: {
+    paddingBottom: 40,
+  },
+  row: {
+    justifyContent: "space-between", // 카드 사이 균등 배분
+    marginBottom: 16, // 행 사이 간격
+  },
+
 
   card: {
-    width: 150,
-    height: 150,
+    width: CARD_WIDTH,
+    height: CARD_WIDTH,
     backgroundColor: "#fff",
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+
+    //그림자
     shadowColor: "#000",
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6,
-    elevation: 4,
+    elevation: 3,
+  },
+
+  addCard: {
+    backgroundColor: "#F3F0F7",
+  },
+
+  workplaceName: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  workplaceRole: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500",
   },
 });
