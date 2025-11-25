@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator  } from "react-native";
 import { ArrowLeft, ChevronRight } from "lucide-react-native";
 import axios from "axios";
 
@@ -44,7 +44,8 @@ export default function WorkerManageScreen({ navigation }) {
                 <View style={styles.rowItem}>
                     <TouchableOpacity
                         style={styles.editBtn}
-                        onPress={() => navigation.navigate("E_WorkerUpdateScreen")}>
+                        onPress={() => navigation.navigate("E_WorkerUpdateScreen", 
+                        { workerId: 1 })}>
                         <Text style={styles.nameText}>김XX</Text>
                         <ChevronRight size={32} color="#999" />
                     </TouchableOpacity>

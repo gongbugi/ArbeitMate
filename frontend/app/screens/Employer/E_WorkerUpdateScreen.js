@@ -1,11 +1,11 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
 import axios from "axios";
 
 const BASE_URL = "http://<백엔드-서버-IP>:8080";
 
-export default function E_WorkerUpdateScreen({ navigation }) {
+export default function E_WorkerUpdateScreen({ navigation, route }) {
     const { workerId } = route.params;
     const [worker, setWorker] = useState(null);
 
@@ -73,7 +73,7 @@ export default function E_WorkerUpdateScreen({ navigation }) {
                 <View style={styles.boxRow}>
                     <Text style={styles.boxText}>월 12:00 - 14:00</Text>
                     <TouchableOpacity style={styles.smallIcon}
-                        onPress={() => navigation.navigate("E_WorkerTimeScreen")} />
+                        onPress={() => navigation.navigate("E_WorkerTimeScreen",{ workerId })} />
                 </View>
 
                 {/* 근무 가능 시간 */}

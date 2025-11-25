@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -11,7 +11,7 @@ import axios from "axios";
 
 const BASE_URL = "http://<백엔드-서버-IP>:8080";
 
-export default function E_WorkerTimeScreen({ navigation }) {
+export default function E_WorkerTimeScreen({ navigation, route }) {
     const { workerId } = route.params;
     const [fixedTimes, setFixedTimes] = useState([]);
 
@@ -34,7 +34,7 @@ export default function E_WorkerTimeScreen({ navigation }) {
 
                 <Text style={styles.headerTitle}>고정 근무 시간</Text>
 
-                <TouchableOpacity onPress={() => navigation.navigate("E_WorkerTimeUpdateScreen")}>
+                <TouchableOpacity onPress={() => navigation.navigate("E_WorkerTimeUpdateScreen",{ workerId })}>
                     <Text style={styles.addText}>추가</Text>
                 </TouchableOpacity>
             </View>
