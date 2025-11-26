@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface CompanyMemberRepository extends JpaRepository<CompanyMember, UUID> {
+    List<CompanyMember> findByMemberId(UUID memberId);
     List<CompanyMember> findByCompanyId(UUID companyId);
     List<CompanyMember> findByCompanyIdAndRole(UUID companyId, MembershipRole role);
     Optional<CompanyMember> findByCompanyIdAndMemberId(UUID companyId, UUID memberId);

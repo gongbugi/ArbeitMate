@@ -81,6 +81,17 @@ public class CompanyController {
     }
 
     /**
+     * 사용자가 속한 매장 목록 조회
+     */
+    @GetMapping("/me")
+    public ResponseEntity<List<MyCompanyResponse>> getMyCompanies(
+            @AuthenticationPrincipal AuthPrincipal principal) {
+
+        var res = companyService.listMyCompanies(principal.memberId());
+        return ResponseEntity.ok(res);
+    }
+
+    /**
      * 회사 직원 목록 조회 (사장 전용)
      */
     @GetMapping("/{companyId}/workers")
