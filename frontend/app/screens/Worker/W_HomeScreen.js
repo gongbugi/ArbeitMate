@@ -1,21 +1,68 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import React, { useState, useCallback } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 import { Bell, UserCircle, ChevronRight } from "lucide-react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import client from "../../services/api"
 
 export default function W_HomeScreen({ navigation }) {
+  const [companyName, setCompanyName] = useState("");
+  const [expectedSalary, setExpectedSalary] = useState(0);
+
+  // 데이터 로딩 함수
+  const fetchData = async () => {
+    try {
+      // 1. AsyncStorage에서 선택한 근무지 정보 가져오기
+      const id = await AsyncStorage.getItem("currentCompanyId");
+      const name = await AsyncStorage.getItem("currentCompanyName");
+      
+      if (name) setCompanyName(name);
+
+      // 2. 이번 달 예상 급여 조회 API 호출
+      if (id) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1; // 월은 0부터 시작하므로 +1
+
+        // GET /companies/{companyId}/salary
+        const response = await client.get(`/companies/${id}/salary`, {
+          params: { year, month },
+        });
+        
+        // SalaryResponse의 totalSalary 필드 사용
+        setExpectedSalary(response.data.totalSalary || 0);
+      }
+    } catch (err) {
+      console.log("홈 데이터 로딩 실패:", err);
+    }
+  };
+
+  // 화면이 포커스될 때마다 데이터 갱신 (다른 화면 갔다가 돌아올 때 등)
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [])
+  );
+
+  // 금액 포맷팅 (10000 -> 10,000)
+  const formatMoney = (amount) => {
+    return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+
   return (
     <View style={styles.container}>
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>근무지 1</Text>
+        <Text style={styles.title}>{companyName}</Text>
 
         <View style={styles.icons} >
           <TouchableOpacity onPress={() => navigation.navigate("W_InformationScreen")}>
             <UserCircle size={32} color="#000" />
           </TouchableOpacity>
-
-          <TouchableOpacity >
+          {/*알림 버튼 클릭 시 공지사항으로 이동(임시)*/}
+          <TouchableOpacity onPress={() => navigation.navigate("W_InformationScreen")}>
             <Bell size={28} color="#000" />
           </TouchableOpacity>
         </View>
@@ -57,8 +104,8 @@ export default function W_HomeScreen({ navigation }) {
             </TouchableOpacity>
 
         <View style={styles.salaryBox}>
-          <Text style={styles.salaryLabel}>받아야 할 돈</Text>
-          <Text style={styles.salaryValue}>50,000 원</Text>
+          <Text style={styles.salaryLabel}>이번 달 예상 급여</Text>
+          <Text style={styles.salaryValue}>{formatMoney(expectedSalary)} 원</Text>
         </View>
       
 
