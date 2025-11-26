@@ -2,17 +2,11 @@ spring:
   application:
     name: ArbeitMate
 
-  datasource:
-    url: jdbc:h2:tcp://localhost/~/ArbeitMate
-    username: sa
-    password:
-    driver-class-name: org.h2.Driver
-
-    rabbitmq:
-      host: localhost
-      port: 5672
-      username: guest
-      password: guest
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
 
   jpa:
     hibernate:
@@ -26,6 +20,9 @@ spring:
   sql:
     init:
       mode: always
+
+  profiles:
+    default: dev
 
 logging:
   level:

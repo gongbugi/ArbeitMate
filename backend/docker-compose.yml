@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  db:
+    image: mysql:8.0
+    container_name: arbeitmate-mysql
+    environment:
+      MYSQL_DATABASE: arbeitmate
+      MYSQL_ROOT_PASSWORD: rootpw
+      MYSQL_USER: arbeitmate
+      MYSQL_PASSWORD: arbeitmate_pw
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    restart: always
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: arbeitmate-rabbitmq
@@ -11,3 +25,21 @@ services:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
     restart: always
+
+  backend:
+    image: minwoo0629/arbeitmate:latest
+    container_name: arbeitmate-backend
+    depends_on:
+      - db
+      - rabbitmq
+    environment:
+      # docker 프로필 사용(application-docker.yml 적용)
+      SPRING_PROFILES_ACTIVE: docker
+      # docker 환경에서는 rabbitmq 컨테이너 이름으로 접근
+      SPRING_RABBITMQ_HOST: rabbitmq
+    ports:
+      - "8080:8080"
+    restart: always
+
+volumes:
+  db-data:
