@@ -8,6 +8,7 @@ import { View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import client from "../services/api";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get("window");
 const LAYOUT_PADDING = 24;
@@ -30,11 +31,18 @@ export default function WorkplaceSelectScreen({ navigation, route, setRole }) {
     fetchWorkplaces();
   }, [route.params?.refresh]);
 
-  const handleSelectWorkplace = (workplace) => {
-    if(workplace.role === "OWNER") {
-      setRole("employer");
-    } else {
-      setRole("worker")
+  const handleSelectWorkplace = async (workplace) => {
+    try {
+      await AsyncStorage.setItem("currentCompanyId", String(workplace.companyId));
+      await AsyncStorage.setItem("currentCompanyName", workplace.companyName);
+
+      if(workplace.role === "OWNER") {
+        setRole("employer");
+      } else {
+        setRole("worker")
+      }
+    } catch (e) {
+      console.error("매장 정보 저장 실패", e);
     }
   }
 
