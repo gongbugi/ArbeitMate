@@ -13,15 +13,8 @@ import client from "../services/api";
 
 export default function WorkplaceAddScreen({ navigation }) {
 
-export default function WorkplaceAddScreen({ navigation , setRole }) {
-  const handleCreate = () => {
-    // 근무지 생성 로직 (DB 저장 등)dsssc
-    setRole("employer");    // 역할 확정
-  };
   const [storeName, setStoreName] = useState("");
   const [address, setAddress] = useState("");
-  const [category, setCategory] = useState("");
-  const [phone, setPhone] = useState("");
 
   const handleRegister = async () => {
     if (!storeName.trim() || !address.trim()) {
@@ -33,8 +26,6 @@ export default function WorkplaceAddScreen({ navigation , setRole }) {
       await client.post("/companies/create", {
         companyName: storeName,
         companyAddress: address,
-        //category, phone은 아직 백엔드에서 받지 않음
-        //업데이트 후 추가
       });
 
       Alert.alert("생성 완료", "새로운 근무지가 등록되었습니다.", [
@@ -86,31 +77,6 @@ export default function WorkplaceAddScreen({ navigation , setRole }) {
             value={address}
             onChangeText={setAddress}
             placeholder="주소 입력"
-            style={styles.input}
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
-
-        {/* 업종 */}
-        <View style={styles.inputBlock}>
-          <Text style={styles.label}>업종</Text>
-          <TextInput
-            value={category}
-            onChangeText={setCategory}
-            placeholder="업종 입력"
-            style={styles.input}
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
-
-        {/* 전화번호 */}
-        <View style={styles.inputBlock}>
-          <Text style={styles.label}>전화번호</Text>
-          <TextInput
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="대표 전화번호 입력"
-            keyboardType="phone-pad"
             style={styles.input}
             placeholderTextColor="#9CA3AF"
           />
