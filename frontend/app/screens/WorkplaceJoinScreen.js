@@ -1,19 +1,46 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
+import client from "../services/api";
 
-export default function WorkplaceJoinScreen({ navigation , setRole }) {
-  
+export default function WorkplaceJoinScreen({ navigation }) {
   const [code, setCode] = useState('');
 
-  const handleJoin = () => {
-    setRole("worker");
+  const handleJoin = async () => {
+    // 1. 입력값 검증
     if (!code.trim()) {
-      alert('코드를 입력해주세요.');
+      Alert.alert('입력 오류', '초대코드를 입력해주세요.');
       return;
     }
-    alert(`근무지 코드 "${code}"로 가입 요청을 보냈습니다.`);
-    navigation.navigate('WorkplaceSelect');
+
+    try {
+      // 2. 가입 API 호출
+      await client.post("/companies/participate", {
+        inviteCode: code.trim()
+      });
+
+      // 3. 성공 처리
+      Alert.alert("가입 완료", "성공적으로 근무지에 가입되었습니다.", [
+        {
+          text: "확인",
+          onPress: () => {
+            // 목록 화면으로 이동 및 새로고침
+            navigation.navigate("WorkplaceSelectScreen", { refresh: true });
+          }
+        }
+      ]);
+
+    } catch (err) {
+      console.error("가입 실패:", err);
+      const message = err.response?.data?.message || "가입에 실패했습니다. 코드를 확인해주세요.";
+      Alert.alert("가입 실패", message);
+    }
   };
 
   return (
@@ -37,6 +64,7 @@ export default function WorkplaceJoinScreen({ navigation , setRole }) {
         value={code}
         onChangeText={setCode}
         style={styles.input}
+        autoCapitalize="none"
       />
 
       {/* Button */}
