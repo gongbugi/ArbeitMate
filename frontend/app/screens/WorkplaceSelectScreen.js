@@ -19,13 +19,10 @@ export default function WorkplaceSelectScreen({ navigation, route, setRole }) {
   
   const fetchWorkplaces = async () => {
     try {
-      const res = await client.get("근무지 조회 api"); 
+      const res = await client.get("/companies/me"); 
       setWorkplaces(res.data);
     } catch (err) {
       console.log("근무지 조회 실패:", err);
-      setWorkplaces([
-        { companyId: "uuid-3", name: "이마트 성수점", role: "WORKER" },
-      ]);
     }
   };
 
@@ -66,7 +63,7 @@ export default function WorkplaceSelectScreen({ navigation, route, setRole }) {
         style={styles.card}
         onPress={() => handleSelectWorkplace(item)}
       >
-        <Text style={styles.workplaceName}>{item.name}</Text>
+        <Text style={styles.workplaceName}>{item.companyName}</Text>
         <Text style={styles.workplaceRole}>
           {item.role === "OWNER" ? "고용주" : "근무자"}
         </Text>
