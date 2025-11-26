@@ -36,6 +36,9 @@ dependencies {
 	// 쿼리 파라미터 로그 남기기
 	implementation("com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.9.0")
 
+	// RabbitMQ 라이브러리
+	implementation 'org.springframework.boot:spring-boot-starter-amqp'
+
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.h2database:h2' // test용 로컬 db
 	runtimeOnly 'com.mysql:mysql-connector-j'

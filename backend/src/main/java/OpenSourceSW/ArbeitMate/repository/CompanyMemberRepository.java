@@ -13,4 +13,5 @@ public interface CompanyMemberRepository extends JpaRepository<CompanyMember, UU
     List<CompanyMember> findByCompanyId(UUID companyId);
     List<CompanyMember> findByCompanyIdAndRole(UUID companyId, MembershipRole role);
     Optional<CompanyMember> findByCompanyIdAndMemberId(UUID companyId, UUID memberId);
+    Optional<CompanyMember> findByMemberIdAndCompanyId(UUID memberId, UUID companyId);
 }

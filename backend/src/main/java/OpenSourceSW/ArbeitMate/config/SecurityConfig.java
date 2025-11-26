@@ -23,7 +23,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/swagger", "/swagger-ui.html", "/swagger-ui.html/**", "/swagger-ui/**", "/api-docs", "/api-docs/**", "/v3/api-docs/**")
                         .permitAll()
-                        .requestMatchers("/test/**", "/auth/**")
+                        .requestMatchers("/test/**", "/auth/**", "/notifications/**")
                         .permitAll()
                         .anyRequest().authenticated()  // 그 외 요청은 인증 필요
                 )

@@ -1,0 +1,51 @@
+name: Safety Check
+
+on:
+  push:
+    branches: [ "main", "develop", "feature/**" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  safety-checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # .env, 키 파일, 인증서 같은 민감 파일이 커밋돼 있는지 확인
+      - name: Check for forbidden secret-like files
+        run: |
+          echo "Checking for forbidden secret-like files..."
+          forbidden_patterns=(
+            '*.env'
+            '*.pem'
+            '*.p12'
+            '*firebase*.json'
+            '*service-account*.json'
+            '*credentials*.json'
+          )
+
+          found=false
+
+          for pattern in "${forbidden_patterns[@]}"; do
+            # git으로 추적 중인 파일만 확인
+            matches=$(git ls-files "$pattern" || true)
+            if [ -n "$matches" ]; then
+              echo "Found forbidden files matching pattern '$pattern':"
+              echo "$matches"
+              found=true
+            fi
+          done
+
+          if [ "$found" = true ]; then
+            echo ""
+            echo " Secret-like files are committed to the repository."
+            echo " Please remove them from git history (git rm --cached ...) and add them to .gitignore."
+            exit 1
+          fi
+
+          echo "No forbidden secret-like files found."
