@@ -24,6 +24,7 @@ public class CompanyService {
 
     private final MemberRepository memberRepository;
     private final CompanyRepository companyRepository;
+    private final CompanyMemberRepository companyMemberRepository;
     private final CompanyRoleRepository companyRoleRepository;
     private final CompanyMemberRoleRepository companyMemberRoleRepository;
     private final AvailabilitySubmissionRepository availabilitySubmissionRepository;
@@ -135,6 +136,20 @@ public class CompanyService {
         validateOwner(memberId, company);
 
         companyRepository.delete(company); // 하위 엔티티는 cascade + orphanRemoval로 함께 자동으로 삭제
+    }
+
+    /**
+     * 사용자가 속한 매장 목록 조회
+     */
+    public List<MyCompanyResponse> listMyCompanies(UUID memberId) {
+        memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("Member not found"));
+
+        List<CompanyMember> memberships = companyMemberRepository.findByMemberId(memberId);
+
+        return memberships.stream()
+                .map(MyCompanyResponse::from)
+                .toList();
     }
 
     /**

@@ -17,8 +17,8 @@ export default function App() {
 
       {/* 로그인 or 근무지 선택/생성 단계 (role === null 이면 LoginNavigator 사용) */}
       {role === null && (
-        <LoginNavigator setRole={setRole} />
-        //<E_Navigator />
+        //<LoginNavigator setRole={setRole} />
+        <E_Navigator />
         //<W_Navigator />
       )}
 

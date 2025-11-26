@@ -1,8 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
+import AddPeopleModal from "./AddPeopleModal";
 
-export default function E_ScheduleAutoAddPeopleScreen({ navigation }) {
+export default function E_ScheduleAutoAddPeopleScreen({ navigation, route }) {
+  const { day, period } = route.params;
+  const [visible, setVisible] = useState(false);
+
   return (
     <View style={styles.container}>
 
@@ -18,16 +22,16 @@ export default function E_ScheduleAutoAddPeopleScreen({ navigation }) {
       {/* 요일 */}
       <Text style={styles.dayLabel}>{day}</Text>
 
-      {/* Card */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>인원 추가</Text>
-
-        <TouchableOpacity
-          style={styles.plusButton}
-          onPress={() => navigation.navigate("E_AddPeopleModal")}
-        >
-          <View style={styles.plusIcon} />
-        </TouchableOpacity>
+        <View style={styles.row}>
+          <TouchableOpacity
+            style={styles.plusCircle}
+            onPress={() => setVisible(true)}>
+            <Text style={styles.plus}>+</Text>
+          </TouchableOpacity>
+          <Text style={styles.cardTitle}>인원 추가</Text>
+          <AddPeopleModal visible={visible} onClose={() => setVisible(false)} />
+        </View>
       </View>
 
     </View>
@@ -75,27 +79,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
 
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  plusCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  plus: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "bold",
+    lineHeight: 32,
+  },
+
   cardTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    textAlign: "center",
     color: "#000",
-    marginBottom: 32,
-  },
-
-  plusButton: {
-    width: 48,
-    height: 48,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  plusIcon: {
-    width: 32,
-    height: 32,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: 6,
   },
 });
