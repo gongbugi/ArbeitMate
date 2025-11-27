@@ -1,42 +1,84 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  FlatList, 
+  StyleSheet, 
+  ActivityIndicator 
+} from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import client from "../../services/api";
 
 export default function W_NoticeScreen({ navigation }) {
-  const notices = [
-    { id: 1, title: '지점 휴일 안내', content: '내일은 지점이 휴무입니다.', date: '2025.10.04' },
-    { id: 2, title: '메뉴 교육', content: '이번 주 금요일에 신메뉴 교육이 있습니다.', date: '2025.10.13' },
-  ];
+  const [notices, setNotices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotices();
+  }, []);
+
+  const fetchNotices = async () => {
+    try {
+      const companyId = await AsyncStorage.getItem("currentCompanyId");
+      // GET /companies/{companyId}/notices
+      const response = await client.get(`/companies/${companyId}/notices`);
+      setNotices(response.data);
+    } catch (err) {
+      console.error("공지사항 조회 실패:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 날짜 포맷 함수 (2025-11-27T10:00:00 -> 2025.11.27)
+  const formatDate = (isoString) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    return `${yyyy}.${mm}.${dd}`;
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardDate}>{formatDate(item.createdAt)}</Text>
+      </View>
+      <Text style={styles.cardContent}>{item.content}</Text>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ArrowLeft size={32} color="#000" />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>공지사항</Text>
-
         <View style={{ width: 32 }} />
       </View>
 
-      <FlatList
-        data={notices}
-        keyExtractor={(item) => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardDate}>{item.date}</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color="#000" style={{ marginTop: 20 }} />
+      ) : (
+        <FlatList
+          data={notices}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 20 }}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>등록된 공지사항이 없습니다.</Text>
             </View>
-            <Text style={styles.cardContent}>{item.content}</Text>
-          </View>
-        )}
-      />
+          }
+        />
+      )}
     </View>
   );
 }
@@ -48,8 +90,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 64,
   },
-
-  /* Header */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -61,35 +101,50 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
-
-  /* Notice Card */
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
+    padding: 20,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
     elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 6,
+    alignItems: "center",
   },
   cardTitle: {
-    fontSize: 20,
-    color: "#777",
-    fontWeight: "500",
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
+    flex: 1,
   },
   cardDate: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#999",
+    marginLeft: 8,
+  },
+  writer: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 8,
   },
   cardContent: {
+    fontSize: 15,
+    color: "#333",
+    lineHeight: 22,
+  },
+  emptyBox: {
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  emptyText: {
     fontSize: 16,
-    color: "#000",
+    color: "#999",
   },
 });
