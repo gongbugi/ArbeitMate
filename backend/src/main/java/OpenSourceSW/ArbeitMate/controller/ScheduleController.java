@@ -91,7 +91,19 @@ public class ScheduleController {
     }
 
     /**
-     * 매장의 모든 기간 + 각 기간별 슬롯 목록 조회
+     * 가용 시간 제출 스케줄 목록 조회 (근무자)
+     */
+    @GetMapping("/periods/availability")
+    public ResponseEntity<List<WorkerSchedulePeriodResponse>> listAvailabilityPeriodsForWorker(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId) {
+
+        var res = scheduleService.listAvailabilityPeriodsForWorker(principal.memberId(), companyId);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 매장의 모든 기간 + 각 기간별 슬롯 목록 조회 (사장)
      */
     @GetMapping("/periods-with-slots")
     public ResponseEntity<List<SchedulePeriodWithSlotsResponse>> listPeriodsWithSlots(
@@ -100,6 +112,19 @@ public class ScheduleController {
 
         var res = scheduleService.listPeriodsWithSlots(principal.memberId(), companyId);
         return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 가용 시간 제출 오픈 (사장)
+     */
+    @PostMapping("/{periodId}/open-availability")
+    public ResponseEntity<Void> openSchedulePeriod(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID periodId) {
+
+        scheduleService.openSchedulePeriod(principal.memberId(), companyId, periodId);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     /**

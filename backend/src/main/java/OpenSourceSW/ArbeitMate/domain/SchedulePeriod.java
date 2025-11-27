@@ -77,7 +77,18 @@ public class SchedulePeriod {
     }
 
     //== 비즈니스 로직 ==//
+    /** DRAFT -> OPEN */
+    public void open() {
+        if (this.status != PeriodStatus.DRAFT) {
+            throw new IllegalStateException("DRAFT 상태에서만 OPEN 으로 전환할 수 있습니다.");
+        }
+        this.status = PeriodStatus.OPEN;
+    }
+
     public void publish(Member publisher) {
+        if (this.status != PeriodStatus.OPEN) {
+            throw new IllegalStateException("OPEN 상태에서만 게시할 수 있습니다.");
+        }
         this.status = PeriodStatus.PUBLISHED;
         this.publishedBy = publisher;
         this.publishedAt = LocalDateTime.now();

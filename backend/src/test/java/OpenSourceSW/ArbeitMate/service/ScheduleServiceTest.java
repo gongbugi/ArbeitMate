@@ -2011,6 +2011,7 @@ class ScheduleServiceTest {
         );
         UUID periodId = UUID.randomUUID();
         ReflectionTestUtils.setField(period, "id", periodId);
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.OPEN);
 
         // 멤버 & 회사멤버
         Member worker = newMember("worker@test.com", "알바");
@@ -2123,6 +2124,7 @@ class ScheduleServiceTest {
         );
         UUID periodId = UUID.randomUUID();
         ReflectionTestUtils.setField(period, "id", periodId);
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.OPEN);
 
         Member worker = newMember("worker@test.com", "알바");
         ReflectionTestUtils.setField(worker, "id", memberId);
@@ -2174,6 +2176,7 @@ class ScheduleServiceTest {
         );
         UUID periodId = UUID.randomUUID();
         ReflectionTestUtils.setField(period, "id", periodId);
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.OPEN);
 
         Member worker = newMember("worker@test.com", "알바");
         ReflectionTestUtils.setField(worker, "id", memberId);
@@ -2256,6 +2259,7 @@ class ScheduleServiceTest {
         );
         UUID periodId1 = UUID.randomUUID();
         ReflectionTestUtils.setField(period1, "id", periodId1);
+        ReflectionTestUtils.setField(period1, "status", PeriodStatus.OPEN);
 
         SchedulePeriod period2 = SchedulePeriod.create(
                 company, "P2", PeriodType.WEEKLY,
@@ -2413,6 +2417,7 @@ class ScheduleServiceTest {
         );
         UUID periodId = UUID.randomUUID();
         ReflectionTestUtils.setField(period, "id", periodId);
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.OPEN);
 
         Member worker = newMember("w1@test.com", "알바1");
         UUID workerId = UUID.randomUUID();
@@ -2493,6 +2498,7 @@ class ScheduleServiceTest {
         );
         UUID periodId = UUID.randomUUID();
         ReflectionTestUtils.setField(period, "id", periodId);
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.OPEN);
 
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
@@ -2584,6 +2590,7 @@ class ScheduleServiceTest {
         );
         UUID periodId = UUID.randomUUID();
         ReflectionTestUtils.setField(period, "id", periodId);
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.OPEN);
 
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));
@@ -2643,7 +2650,7 @@ class ScheduleServiceTest {
     // publishSchedulePeriod
     // =====================================================================
     @Test
-    @DisplayName("근무표 확정 - DRAFT 상태에서 publish 호출")
+    @DisplayName("근무표 확정 - OPEN 상태에서 publish 호출")
     void publishSchedulePeriod_success() {
         // given
         UUID ownerId = UUID.randomUUID();
@@ -2662,6 +2669,7 @@ class ScheduleServiceTest {
         ));
         UUID periodId = UUID.randomUUID();
         ReflectionTestUtils.setField(period, "id", periodId);
+        ReflectionTestUtils.setField(period, "status", PeriodStatus.OPEN);
 
         when(companyRepository.findById(companyId)).thenReturn(Optional.of(company));
         when(schedulePeriodRepository.findById(periodId)).thenReturn(Optional.of(period));

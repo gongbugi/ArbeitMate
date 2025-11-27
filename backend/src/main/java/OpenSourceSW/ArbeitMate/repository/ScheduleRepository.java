@@ -18,4 +18,5 @@ public interface ScheduleRepository extends JpaRepository<Schedule, UUID> {
     @Modifying
     @Query("delete from Schedule s where s.period.id = :periodId")
     void deleteByPeriodId(@Param("periodId") UUID periodId);
+    boolean existsByPeriodId(UUID periodId);
 }

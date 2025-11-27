@@ -168,7 +168,7 @@ public class ScheduleService {
     }
 
     /**
-     * 스케쥴 기간 및 슬롯 전체 조회
+     * 스케쥴 기간 및 슬롯 전체 조회 (사장)
      */
     public List<SchedulePeriodWithSlotsResponse> listPeriodsWithSlots(UUID ownerId, UUID companyId) {
         Company company = companyRepository.findById(companyId)
@@ -182,6 +182,47 @@ public class ScheduleService {
                 .map(period -> {
                     List<Schedule> schedules = scheduleRepository.findByPeriod(period);
                     return SchedulePeriodWithSlotsResponse.of(period, schedules);
+                })
+                .toList();
+    }
+
+    /**
+     * 스케쥴 기간 및 슬롯 전체 조회 (직원)
+     */
+    public List<WorkerSchedulePeriodResponse> listAvailabilityPeriodsForWorker(
+            UUID memberId,
+            UUID companyId
+    ) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        validateMembersBelongToCompany(memberId, company);
+
+        List<SchedulePeriod> periods = schedulePeriodRepository.findByCompanyIdOrderByStartDateAsc(companyId);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // OPEN 상태 + 마감 안 지난 것만
+        List<SchedulePeriod> targets = periods.stream()
+                .filter(p -> p.getStatus() == PeriodStatus.OPEN)
+                .filter(p -> p.getAvailabilityDueAt() == null || !now.isAfter(p.getAvailabilityDueAt()))
+                .toList();
+
+        if (targets.isEmpty()) {
+            return List.of();
+        }
+
+        return targets.stream()
+                .map(p -> {
+                    var subOpt = availabilitySubmissionRepository
+                            .findByCompanyIdAndPeriodIdAndMemberId(companyId, p.getId(), memberId);
+
+                    boolean submitted = subOpt.isPresent();
+                    LocalDateTime submittedAt = subOpt
+                            .map(AvailabilitySubmission::getSubmittedAt)
+                            .orElse(null);
+
+                    return WorkerSchedulePeriodResponse.from(p, submitted, submittedAt);
                 })
                 .toList();
     }
@@ -680,6 +721,35 @@ public class ScheduleService {
     }
 
     /**
+     * 가용 시간 제출 열기 (스케줄 다 짜고난 후, 직원에게 입력받고자 할 때)
+     */
+    @Transactional
+    public void openSchedulePeriod(UUID ownerId, UUID companyId, UUID periodId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+        validateOwner(ownerId, company);
+
+        SchedulePeriod period = schedulePeriodRepository.findById(periodId)
+                .orElseThrow(() -> new IllegalArgumentException("SchedulePeriod not found"));
+
+        if (!period.getCompany().getId().equals(companyId)) {
+            throw new IllegalStateException("해당 매장의 스케쥴 기간이 아닙니다.");
+        }
+        if (period.getStatus() != PeriodStatus.DRAFT) {
+            throw new IllegalStateException("DRAFT 상태의 기간에서만 가용 시간 제출을 열 수 있습니다.");
+        }
+
+        // 슬롯이 최소 하나 있어야만 OPEN 가능
+        boolean hasSlots = scheduleRepository.existsByPeriodId(periodId);
+        if (!hasSlots) {
+            throw new IllegalStateException("이 기간에는 스케쥴 슬롯이 하나도 없습니다. 슬롯 생성 후 OPEN 해주세요.");
+        }
+
+        period.open();
+    }
+
+
+    /**
      * 스케쥴 슬롯 조회 (제출한 가능 시간 기반으로 추천 + 역할 기반 필터링)
      */
     public WorkerAvailabilitySlotsResponse getWorkerAvailabilitySlots(UUID memberId, UUID companyId, UUID periodId) {
@@ -691,6 +761,9 @@ public class ScheduleService {
 
         if (!period.getCompany().getId().equals(companyId)) {
             throw new IllegalStateException("해당 매장의 스케쥴 기간이 아닙니다.");
+        }
+        if (period.getStatus() != PeriodStatus.OPEN) { // OPEN 일 때만 가능
+            throw new IllegalStateException("현재 가용 시간을 조회할 수 없는 상태입니다.");
         }
 
         // 해당 회사에 속한 멤버인지 + CompanyMember 조회
@@ -794,8 +867,8 @@ public class ScheduleService {
         if (!period.getCompany().getId().equals(companyId)) {
             throw new IllegalStateException("해당 매장의 스케쥴 기간이 아닙니다.");
         }
-        if (period.getStatus() != PeriodStatus.DRAFT) {
-            throw new IllegalStateException("DRAFT 상태의 기간에서만 가용 시간을 제출할 수 있습니다.");
+        if (period.getStatus() != PeriodStatus.OPEN) {
+            throw new IllegalStateException("현재 가용 시간을 제출할 수 없는 상태입니다.");
         }
         if (period.getAvailabilityDueAt() != null && java.time.LocalDateTime.now().isAfter(period.getAvailabilityDueAt())) {
             throw new IllegalStateException("가용 시간 제출 마감 시간이 지났습니다.");
@@ -1024,8 +1097,8 @@ public class ScheduleService {
         if (!period.getCompany().getId().equals(companyId)) {
             throw new IllegalStateException("해당 매장의 스케쥴 기간이 아닙니다.");
         }
-        if (period.getStatus() != PeriodStatus.DRAFT) {
-            throw new IllegalStateException("DRAFT 상태의 기간에서만 자동 배치를 수행할 수 있습니다.");
+        if (period.getStatus() != PeriodStatus.OPEN) {
+            throw new IllegalStateException("OPEN 상태의 기간에서만 자동 배치를 수행할 수 있습니다.");
         }
 
         // 3. 기간의 모든 슬롯 로드
@@ -1143,8 +1216,8 @@ public class ScheduleService {
         if (!period.getCompany().getId().equals(companyId)) {
             throw new IllegalStateException("해당 매장의 스케쥴 기간이 아닙니다.");
         }
-        if (period.getStatus() != PeriodStatus.DRAFT) {
-            throw new IllegalStateException("DRAFT 상태의 기간에서만 편성안을 수정할 수 있습니다.");
+        if (period.getStatus() != PeriodStatus.OPEN) {
+            throw new IllegalStateException("OPEN 상태의 기간에서만 편성안을 수정할 수 있습니다.");
         }
 
         // 기간의 모든 슬롯 로드
@@ -1246,7 +1319,7 @@ public class ScheduleService {
         if (!period.getCompany().getId().equals(companyId)) {
             throw new IllegalStateException("해당 매장의 스케쥴 기간이 아닙니다.");
         }
-        if (period.getStatus() != PeriodStatus.DRAFT) {
+        if (period.getStatus() != PeriodStatus.OPEN) {
             throw new IllegalStateException("이미 게시되었거나 게시할 수 없는 상태입니다.");
         }
 
