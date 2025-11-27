@@ -5,11 +5,10 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   RefreshControl,
   Alert
 } from "react-native";
-import { ArrowLeft, Trash2 } from "lucide-react-native"; // Trash2 아이콘 사용
+import { ArrowLeft, Trash2, ChevronRight } from "lucide-react-native"; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import client from "../../services/api";
@@ -19,22 +18,25 @@ export default function W_ScheduleCheckScreen({ navigation }) {
   const [patterns, setPatterns] = useState([]); 
   const [refreshing, setRefreshing] = useState(false);
 
+  // 데이터 로드 함수
   const fetchData = async () => {
     try {
       const companyId = await AsyncStorage.getItem("currentCompanyId");
       if (!companyId) return;
 
+      
       const patternRes = await client.get(`/companies/${companyId}/schedule/worker/availability-pattern`);
       
-      // 보기 좋게 정렬 (요일 -> 시작시간 순)
-      const sortedItems = (patternRes.data.items || []).sort((a, b) => {
+      // 1. 패턴 데이터 처리
+      const sortedPatterns = (patternRes.data.items || []).sort((a, b) => {
         if (a.dow !== b.dow) return a.dow - b.dow;
         return a.startTime.localeCompare(b.startTime);
       });
+      setPatterns(sortedPatterns);
       
-      setPatterns(sortedItems);
     } catch (err) {
       console.log("데이터 로딩 실패:", err);
+      // 에러 발생 시 사용자 경험을 위해 Alert 등을 띄울 수 있음
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -47,7 +49,7 @@ export default function W_ScheduleCheckScreen({ navigation }) {
     }, [])
   );
 
-  // 개별 삭제 핸들러
+  // 패턴 삭제 핸들러
   const handleDelete = async (targetItem) => {
     Alert.alert("삭제 확인", "이 근무 가능 시간을 삭제하시겠습니까?", [
       { text: "취소", style: "cancel" },
@@ -58,12 +60,10 @@ export default function W_ScheduleCheckScreen({ navigation }) {
           try {
             const companyId = await AsyncStorage.getItem("currentCompanyId");
             
-            // 삭제 대상을 제외한 새 리스트 생성
             const newPatterns = patterns.filter(item => 
               item.memberAvailabilityId !== targetItem.memberAvailabilityId
             );
 
-            // 서버 전송을 위한 데이터 가공 (ID 등 불필요한 필드 제외하고 요청 DTO 형식에 맞춤)
             const requestBody = {
               items: newPatterns.map(p => ({
                 dow: p.dow,
@@ -74,10 +74,7 @@ export default function W_ScheduleCheckScreen({ navigation }) {
               }))
             };
 
-            // 전체 리스트 업데이트 (덮어쓰기)
             await client.post(`/companies/${companyId}/schedule/worker/availability-pattern`, requestBody);
-            
-            // 화면 갱신
             setPatterns(newPatterns); 
 
           } catch (err) {
@@ -110,6 +107,7 @@ export default function W_ScheduleCheckScreen({ navigation }) {
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
       >
+        {/* === 섹션 1: 등록된 패턴  === */}
         <Text style={styles.sectionTitle}>등록된 시간</Text>
         
         {patterns.length === 0 ? (
@@ -132,6 +130,15 @@ export default function W_ScheduleCheckScreen({ navigation }) {
             </View>
           ))
         )}
+
+        {/* === 섹션 2: 스케줄 신청 요청 (UI만 유지, 기능 삭제) === */}
+        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>스케줄 신청 요청</Text>
+        
+        {/* 기능이 삭제되었으므로 항상 '없음' 상태 표시 */}
+        <View style={styles.emptyBox}>
+           <Text style={styles.emptyText}>현재 진행 중인 요청이 없습니다.</Text>
+        </View>
+
       </ScrollView>
     </View>
   );
@@ -170,6 +177,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: "#555",
   },
+  // 패턴 박스 스타일
   timeBox: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -194,9 +202,38 @@ const styles = StyleSheet.create({
   emptyBox: {
     padding: 30,
     alignItems: "center",
+    backgroundColor: "#f9fafb",
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#e5e7eb"
   },
   emptyText: {
     color: "#999",
     fontSize: 16,
   },
+  requestBox: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+  },
+  requestRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  requestName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 4,
+  },
+  requestDate: {
+    fontSize: 14,
+    color: "#666",
+  }
 });
