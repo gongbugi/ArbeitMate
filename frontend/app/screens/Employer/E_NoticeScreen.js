@@ -7,20 +7,26 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
+
 import { ArrowLeft, Bell, PlusCircle, } from "lucide-react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../../services/api";
 
 
+
 export default function E_NoticeScreen({ navigation }) {
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
+
   useFocusEffect(
     React.useCallback(() => {
       loadNotices();
     }, [])
   );
+
+
+
   useEffect(() => {
     loadNotices();
   }, []);
@@ -38,6 +44,10 @@ export default function E_NoticeScreen({ navigation }) {
     }
   };
 
+
+
+=======
+  
 
   const formatDate = (isoString) => {
     if (!isoString) return "";
