@@ -4,7 +4,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import E_HomeScreen from "../screens/Employer/E_HomeScreen.js";
 import E_NoticeScreen from "../screens/Employer/E_NoticeScreen.js";
 import E_NoticeAddScreen from "../screens/Employer/E_NoticeAddScreen.js";
-import E_PayScreen from "../screens/Employer/E_PayScreen.js";
+import E_PayDetailScreen from "../screens/Employer/E_PayDetailScreen.js";
+import E_PayListScreen from "../screens/Employer/E_PayListScreen.js";
 import E_ScheduleManageScreen from "../screens/Employer/E_ScheduleManageScreen.js";
 import E_SwapRequestListScreen from "../screens/Employer/E_SwapRequestListScreen.js";
 import E_ScheduleAutoAddPeriodScreen from "../screens/Employer/E_ScheduleAutoAddPeriodScreen.js";
@@ -31,7 +32,8 @@ export default function E_Navigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="E_HomeScreen" component={E_HomeScreen} />
       <Stack.Screen name="E_NoticeScreen" component={E_NoticeScreen} />
-      <Stack.Screen name="E_PayScreen" component={E_PayScreen} />
+      <Stack.Screen name="E_PayDetailScreen" component={E_PayDetailScreen} />
+      <Stack.Screen name="E_PayListScreen" component={E_PayListScreen} />
       <Stack.Screen name="E_NoticeAddScreen" component={E_NoticeAddScreen} />
       <Stack.Screen name="E_ScheduleManageScreen" component={E_ScheduleManageScreen} />
       <Stack.Screen name="E_SwapRequestListScreen" component={E_SwapRequestListScreen} />

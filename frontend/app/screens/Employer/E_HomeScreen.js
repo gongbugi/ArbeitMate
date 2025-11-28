@@ -40,7 +40,7 @@ export default function E_HomeScreen({ navigation }) {
 
         {/* 급여 관리 */}
         <TouchableOpacity style={styles.menuCard}
-        onPress={() => navigation.navigate("E_PayScreen")}>
+        onPress={() => navigation.navigate("E_PayListScreen")}>
           <Text style={styles.menuText}>급여 관리</Text>
           <ChevronRight size={32} color="#999" />
         </TouchableOpacity>
