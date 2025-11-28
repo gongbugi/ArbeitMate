@@ -6,7 +6,7 @@ import E_NoticeScreen from "../screens/Employer/E_NoticeScreen.js";
 import E_NoticeAddScreen from "../screens/Employer/E_NoticeAddScreen.js";
 import E_PayScreen from "../screens/Employer/E_PayScreen.js";
 import E_ScheduleManageScreen from "../screens/Employer/E_ScheduleManageScreen.js";
-import E_ShiftRequestListScreen from "../screens/Employer/E_ShiftRequestListScreen.js";
+import E_SwapRequestListScreen from "../screens/Employer/E_SwapRequestListScreen.js";
 import E_ScheduleAutoAddPeriodScreen from "../screens/Employer/E_ScheduleAutoAddPeriodScreen.js";
 import E_ScheduleAutoAddPeriodSelectScreen from "../screens/Employer/E_ScheduleAutoAddPeriodSelectScreen.js";
 import E_ScheduleAutoAddScreen from "../screens/Employer/E_ScheduleAutoAddScreen.js";
@@ -22,6 +22,7 @@ import E_WorkerTimeUpdateScreen from "../screens/Employer/E_WorkerTimeUpdateScre
 import E_WorkerUpdateScreen from "../screens/Employer/E_WorkerUpdateScreen.js";
 import E_ScheduleMainScreen from "../screens/Employer/E_ScheduleMainScreen.js";
 import ScheduleDetailModal from "../screens/Employer/ScheduleDetailModal.js";
+import SwapDetailModal from "../screens/Employer/SwapDetailModal.js";
 
 const Stack = createNativeStackNavigator();
 
@@ -33,7 +34,7 @@ export default function E_Navigator() {
       <Stack.Screen name="E_PayScreen" component={E_PayScreen} />
       <Stack.Screen name="E_NoticeAddScreen" component={E_NoticeAddScreen} />
       <Stack.Screen name="E_ScheduleManageScreen" component={E_ScheduleManageScreen} />
-      <Stack.Screen name="E_ShiftRequestListScreen" component={E_ShiftRequestListScreen} />
+      <Stack.Screen name="E_SwapRequestListScreen" component={E_SwapRequestListScreen} />
       <Stack.Screen name="E_ScheduleAutoAddPeriodScreen" component={E_ScheduleAutoAddPeriodScreen} />
       <Stack.Screen name="E_ScheduleAutoAddPeriodSelectScreen" component={E_ScheduleAutoAddPeriodSelectScreen} />
       <Stack.Screen name="E_ScheduleAutoAddScreen" component={E_ScheduleAutoAddScreen} />
@@ -49,6 +50,7 @@ export default function E_Navigator() {
       <Stack.Screen name="E_WorkerUpdateScreen" component={E_WorkerUpdateScreen} />
       <Stack.Screen name="E_ScheduleMainScreen" component={E_ScheduleMainScreen} />
       <Stack.Screen name="ScheduleDetailModal" component={ScheduleDetailModal} />
+      <Stack.Screen name="SwapDetailModal" component={SwapDetailModal} />
       {/* 필요 스크린 계속 추가 */}
     </Stack.Navigator>
   );
