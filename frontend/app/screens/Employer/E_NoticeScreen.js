@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { ArrowLeft, Bell, useFocusEffect } from "lucide-react-native";
+import { ArrowLeft, Bell, PlusCircle, } from "lucide-react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import client from "../../services/api";
 
@@ -81,7 +82,7 @@ export default function E_NoticeScreen({ navigation }) {
 
         {/* 사장만 작성 가능 */}
         <TouchableOpacity onPress={() => navigation.navigate("E_NoticeAddScreen")}>
-          <Bell size={28} color="#000" />
+          <PlusCircle size={28} color="#000" />
         </TouchableOpacity>
       </View>
 

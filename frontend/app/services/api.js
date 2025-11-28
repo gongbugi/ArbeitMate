@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // 안드로이드 에뮬레이터 기준 주소 (실제 폰 사용 시 내 PC IP로 변경 필요)
-const BASE_URL = "http://(PC IP입력):8080"; 
+const BASE_URL = "http://162.120.185.40:8080"; 
 
 const client = axios.create({
   baseURL: BASE_URL,

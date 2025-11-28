@@ -30,7 +30,7 @@ export default function E_NoticeDetailScreen({ route, navigation }) {
     }
   };
 
-  /** 📌 공지 삭제하기 */
+  /* 공지 삭제하기 */
   const deleteNotice = () => {
     Alert.alert(
       "삭제 확인",
