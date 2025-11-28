@@ -1,142 +1,151 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
 import { ArrowLeft, ChevronRight } from "lucide-react-native";
 
-export default function E_ScheduleAutoAddWeekdayScreen({ navigation, route }) {
+const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 
-  const days = ["월", "화", "수", "목", "금", "토", "일"];
-const [selectedDate, setSelectedDate] = useState("");
-  const period = route.params?.period || "기간을 선택하세요";
+export default function E_ScheduleAutoAddWeekdayScreen({ navigation, route }) {
+  const { periodId, startDate, endDate, periodLabel } = route.params;
+
+  // weekdayConfigs: { [weekdayIndex: number]: Pattern[] }
+  const [weekdayConfigs, setWeekdayConfigs] = useState({});
+
+  const handleOpenDay = (index) => {
+    const dayLabel = DAYS[index];
+
+    navigation.navigate("E_ScheduleAutoAddPeopleScreen", {
+      weekdayIndex: index,
+      weekdayLabel: dayLabel,
+      periodId,
+      startDate,
+      endDate,
+      patterns: weekdayConfigs[index] || [],
+      // 콜백으로 되돌려 받기
+      onSave: (weekdayIdx, updatedList) => {
+        setWeekdayConfigs((prev) => ({
+          ...prev,
+          [weekdayIdx]: updatedList,
+        }));
+      },
+    });
+  };
+
+  const handleGoSummary = () => {
+    navigation.navigate("E_ScheduleAutoAddScreen", {
+      periodId,
+      startDate,
+      endDate,
+      periodLabel,
+      weekdayConfigs,
+    });
+  };
+
+  const getRequiredCountForDay = (index) => {
+    const list = weekdayConfigs[index] || [];
+    if (!list.length) return 0;
+    return list.reduce((sum, p) => sum + (p.requiredHeadCount || 0), 0);
+  };
 
   return (
     <View style={styles.container}>
-
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ArrowLeft size={32} color="#000" />
+          <ArrowLeft size={28} color="#000" />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>근무표 자동 생성</Text>
-
-        <View style={{ width: 32 }} />
+        <View style={{ width: 28 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      {/* 기간 표시 */}
+      <Text style={styles.periodText}>{periodLabel}</Text>
 
-        {/* 기간 */}
-        <Text style={styles.sectionTitle}>기간</Text>
-        <View style={styles.box}>
-          <Text style={styles.boxText}>{period}</Text>
-        </View>
-
-        {/* 필요 인원 */}
-        <Text style={styles.sectionTitle}>필요 인원</Text>
-
-
-        {/* 요일 리스트 */}
-        <View style={styles.dayList}>
-          {days.map((day, idx) => (
-            <TouchableOpacity key={idx} style={styles.dayRow}
-              onPress={() => navigation.navigate("E_ScheduleAutoAddPeopleScreen", {
-                day: day,
-                period: period,
-              })}>
-              <Text style={styles.dayText}>{day}</Text>
-              <ChevronRight size={28} color="#999" />
+      {/* 요일 리스트 */}
+      <ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
+        {DAYS.map((day, idx) => {
+          const count = getRequiredCountForDay(idx);
+          return (
+            <TouchableOpacity
+              key={day}
+              style={styles.dayCard}
+              onPress={() => handleOpenDay(idx)}
+            >
+              <View>
+                <Text style={styles.dayLabel}>{day}</Text>
+                <Text style={styles.subText}>
+                  {count > 0 ? `필요 인원: ${count}명` : "설정되지 않음"}
+                </Text>
+              </View>
+              <ChevronRight size={22} color="#9ca3af" />
             </TouchableOpacity>
-          ))}
-        </View>
-
+          );
+        })}
       </ScrollView>
 
-      {/* 저장 버튼 */}
-      <TouchableOpacity style={styles.saveBtn}
-        onPress={() => {
-          navigation.navigate("E_ScheduleAutoAddSummaryScreen", {
-            period: period,  // 선택한 기간을 전달
-          });
-        }}>
+      {/* 저장(요약으로 이동) 버튼 */}
+      <TouchableOpacity style={styles.saveBtn} onPress={handleGoSummary}>
         <Text style={styles.saveText}>저장</Text>
       </TouchableOpacity>
-
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f3f4f6",
-    paddingHorizontal: 24,
     paddingTop: 64,
+    paddingHorizontal: 20,
   },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#000",
   },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#000",
-    marginTop: 20,
-    marginBottom: 8,
+  periodText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: "#6b7280",
   },
-
-  box: {
-    width: "100%",
+  dayCard: {
+    marginTop: 16,
     backgroundColor: "#fff",
-    borderRadius: 24,
-    paddingVertical: 14,
+    borderRadius: 20,
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    elevation: 2,
-  },
-  boxText: {
-    fontSize: 16,
-    color: "#000",
-  },
-
-  dayList: {
-    marginTop: 30,
-  },
-
-  dayRow: {
-    backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 14,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    elevation: 2,
   },
-
-  dayText: {
-    fontSize: 22,
-    fontWeight: "500",
-    color: "#000",
+  dayLabel: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
-
+  subText: {
+    marginTop: 4,
+    color: "#6b7280",
+    fontSize: 13,
+  },
   saveBtn: {
     backgroundColor: "#000",
-    height: 60,
-    borderRadius: 30,
+    height: 56,
+    borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
     marginVertical: 20,
   },
   saveText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#fff",
   },

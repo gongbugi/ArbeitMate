@@ -1,14 +1,83 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
+  ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { ArrowLeft, Bell } from "lucide-react-native";
+
+import { ArrowLeft, Bell, PlusCircle, } from "lucide-react-native";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import client from "../../services/api";
+
+
 
 export default function E_NoticeScreen({ navigation }) {
+  const [notices, setNotices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadNotices();
+    }, [])
+  );
+
+
+
+  useEffect(() => {
+    loadNotices();
+  }, []);
+
+  const loadNotices = async () => {
+    try {
+      const companyId = await AsyncStorage.getItem("currentCompanyId");
+
+      const res = await client.get(`/companies/${companyId}/notices`);
+      setNotices(res.data);
+    } catch (err) {
+      console.error("공지사항 불러오기 실패:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+=======
+  
+
+  const formatDate = (isoString) => {
+    if (!isoString) return "";
+    const date = new Date(isoString);
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    return `${yyyy}.${mm}.${dd}`;
+  };
+
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.noticeCard}
+      onPress={() =>
+        navigation.navigate("E_NoticeDetailScreen", {
+          noticeId: item.id,
+          companyId: item.companyId,
+        })
+      }
+    >
+      <View style={styles.noticeHeader}>
+        <Text style={styles.noticeTitle}>{item.title}</Text>
+        <Text style={styles.noticeDate}>{formatDate(item.createdAt)}</Text>
+      </View>
+      <Text style={styles.noticeContent} numberOfLines={2}>
+        {item.content}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
 
@@ -18,41 +87,31 @@ export default function E_NoticeScreen({ navigation }) {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <ArrowLeft size={32} color="#000" />
           </TouchableOpacity>
-
           <Text style={styles.headerTitle}>공지사항</Text>
         </View>
 
+        {/* 사장만 작성 가능 */}
         <TouchableOpacity onPress={() => navigation.navigate("E_NoticeAddScreen")}>
-          <Bell size={28} color="#000" />
+          <PlusCircle size={28} color="#000" />
         </TouchableOpacity>
       </View>
 
-      {/* 공지 리스트 */}
-      <ScrollView showsVerticalScrollIndicator={false}>
-
-        {/* 공지 1 */}
-        <View style={styles.noticeCard}>
-          <View style={styles.noticeHeaderRow}>
-            <Text style={styles.noticeTitle}>지점 휴일 안내</Text>
-            <Text style={styles.noticeDate}>2025.10.04</Text>
-          </View>
-          <Text style={styles.noticeContent}>
-            내일은 지점 휴무입니다.
-          </Text>
-        </View>
-
-        {/* 공지 2 */}
-        <View style={styles.noticeCard}>
-          <View style={styles.noticeHeaderRow}>
-            <Text style={styles.noticeTitle}>메뉴 교육</Text>
-            <Text style={styles.noticeDate}>2025.10.13</Text>
-          </View>
-          <Text style={styles.noticeContent}>
-            이번 주 금요일에 신메뉴 교육이 있습니다.
-          </Text>
-        </View>
-
-      </ScrollView>
+      {/* Loading */}
+      {loading ? (
+        <ActivityIndicator size="large" color="#000" style={{ marginTop: 20 }} />
+      ) : (
+        <FlatList
+          data={notices}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>등록된 공지사항이 없습니다.</Text>
+            </View>
+          }
+        />
+      )}
 
     </View>
   );
@@ -61,9 +120,9 @@ export default function E_NoticeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f3f4f6", // gray-100 비슷
-    paddingHorizontal: 24,      // px-6
-    paddingTop: 64,             // pt-16
+    backgroundColor: "#f3f4f6",
+    paddingHorizontal: 24,
+    paddingTop: 64,
   },
 
   // Header
@@ -71,7 +130,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 32, // mb-8
+    marginBottom: 20,
   },
   headerLeft: {
     flexDirection: "row",
@@ -80,38 +139,49 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#000",
-    marginLeft: 16, // ml-4
+    marginLeft: 16,
   },
 
-  // Notice card
+  // Notice Card
   noticeCard: {
     backgroundColor: "#fff",
-    borderRadius: 24,   // rounded-3xl
-    padding: 20,        // p-5
-    marginBottom: 24,   // mb-6
+    padding: 20,
+    borderRadius: 24,
+    marginBottom: 16,
     elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
   },
-  noticeHeaderRow: {
+  noticeHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8, // mb-2
+    marginBottom: 8,
   },
   noticeTitle: {
-    fontSize: 20,
-    color: "#6b7280", // text-gray-500
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
+    flex: 1,
   },
   noticeDate: {
     fontSize: 12,
-    color: "#6b7280",
+    color: "#888",
+    marginLeft: 8,
   },
   noticeContent: {
+    fontSize: 15,
+    color: "#333",
+  },
+
+  // Empty State
+  emptyBox: {
+    marginTop: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "#999",
     fontSize: 16,
-    color: "#000",
   },
 });

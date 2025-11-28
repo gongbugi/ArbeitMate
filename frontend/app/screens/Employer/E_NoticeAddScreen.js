@@ -6,12 +6,40 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import client from "../../services/api"; 
+
+
 
 export default function E_NoticeAddScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+
+  const submitNotice = async () => {
+    if (!title.trim() || !content.trim()) {
+      Alert.alert("알림", "제목과 내용을 모두 입력해주세요.");
+      return;
+    }
+
+    try {
+      const companyId = await AsyncStorage.getItem("currentCompanyId");
+
+      await client.post(`/companies/${companyId}/notices`, {
+        title,
+        content,
+      });
+
+      Alert.alert("성공", "공지사항이 등록되었습니다.");
+      navigation.goBack();
+    } catch (err) {
+      console.error("공지사항 등록 실패:", err);
+      Alert.alert("오류", "공지사항 등록 중 문제가 발생했습니다.");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -23,6 +51,8 @@ export default function E_NoticeAddScreen({ navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>공지사항 작성</Text>
+
+        <View style={{ width: 32 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
@@ -30,7 +60,6 @@ export default function E_NoticeAddScreen({ navigation }) {
         {/* 제목 */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>제목</Text>
-
           <TextInput
             value={title}
             onChangeText={setTitle}
@@ -47,9 +76,9 @@ export default function E_NoticeAddScreen({ navigation }) {
             value={content}
             onChangeText={setContent}
             placeholder="내용을 입력하세요"
-            textAlignVertical="top"
             multiline
             numberOfLines={10}
+            textAlignVertical="top"
             style={[styles.input, styles.contentInput]}
           />
         </View>
@@ -57,7 +86,7 @@ export default function E_NoticeAddScreen({ navigation }) {
       </ScrollView>
 
       {/* 작성 버튼 */}
-      <TouchableOpacity style={styles.submitBtn}>
+      <TouchableOpacity style={styles.submitBtn} onPress={submitNotice}>
         <Text style={styles.submitText}>작성</Text>
       </TouchableOpacity>
 
@@ -73,11 +102,11 @@ const styles = StyleSheet.create({
     paddingTop: 64,
   },
 
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 32,
+    justifyContent: "space-between",
   },
   headerTitle: {
     fontSize: 20,
@@ -88,7 +117,6 @@ const styles = StyleSheet.create({
 
   scroll: { flex: 1 },
 
-  // Input groups
   inputGroup: {
     marginBottom: 24,
   },
@@ -110,7 +138,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
 
-  // Submit button
   submitBtn: {
     backgroundColor: "#000",
     borderRadius: 24,
