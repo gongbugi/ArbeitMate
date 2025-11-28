@@ -6,6 +6,7 @@ import OpenSourceSW.ArbeitMate.dto.response.SalaryResponse;
 import OpenSourceSW.ArbeitMate.repository.CompanyMemberRepository;
 import OpenSourceSW.ArbeitMate.repository.ScheduleAssignmentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,14 +24,15 @@ public class SalaryService {
     private final ScheduleAssignmentRepository scheduleAssignmentRepository;
     private final CompanyMemberRepository companyMemberRepository;
 
-    private static final int MINIMUM_WAGE_2025 = 10030;
+    @Value("${hourlyWage}")
+    private int MINIMUM_WAGE_2025;
 
     public SalaryResponse calculateMonthlySalary(UUID memberId, UUID companyId, int year, int month) {
         int hourlyWage = MINIMUM_WAGE_2025;
 
         Optional<CompanyMember> companyMemberOpt = companyMemberRepository.findByMemberIdAndCompanyId(memberId, companyId);
         if (companyMemberOpt.isPresent()) {
-             hourlyWage = Math.max(MINIMUM_WAGE_2025, 10000);
+             hourlyWage = Math.max(MINIMUM_WAGE_2025, companyMemberOpt.get().getHourlyWage());
         }
 
         // 2. 조회 기간 설정

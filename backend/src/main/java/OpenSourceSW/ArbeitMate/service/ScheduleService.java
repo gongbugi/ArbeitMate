@@ -557,6 +557,37 @@ public class ScheduleService {
     }
 
     /**
+     * 근무자 희망 근무 시간 개별 삭제
+     */
+    @Transactional
+    public void deleteMemberAvailabilityItem(UUID memberId, UUID companyId, UUID availabilityId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        CompanyMember cm = companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId)
+                .orElseThrow(() -> new IllegalStateException("해당 매장에 속한 멤버가 아닙니다."));
+
+        // 고정 근무자는 희망 근무 시간 사용 안함
+        if (cm.isFixedShiftWorker()) {
+            throw new IllegalStateException("고정 근무자는 희망 근무 시간을 별도로 삭제할 수 없습니다.");
+        }
+
+        // 삭제 대상 희망 근무 시간 조회
+        MemberAvailability availability = memberAvailabilityRepository.findById(availabilityId)
+                .orElseThrow(() -> new IllegalArgumentException("희망 근무 시간을 찾을 수 없습니다."));
+
+        // 동일 회사 + 동일 멤버의 데이터인지 확인
+        if (!availability.getCompany().getId().equals(companyId)) {
+            throw new IllegalStateException("해당 매장의 희망 근무 시간이 아닙니다.");
+        }
+        if (!availability.getMember().getId().equals(cm.getMember().getId())) {
+            throw new IllegalStateException("해당 멤버의 희망 근무 시간이 아닙니다.");
+        }
+
+        memberAvailabilityRepository.delete(availability);
+    }
+
+    /**
      * 근무자 희망 근무 시간 조회
      */
     public MemberAvailabilityResponse getMemberAvailabilityPattern(UUID memberId, UUID companyId) {
@@ -650,6 +681,30 @@ public class ScheduleService {
                 .toList();
 
         return buildFixedShiftResponse(cm, true, itemResponses);
+    }
+
+    /**
+     * 직원 본인 고정 근무 설정/패턴 조회
+     */
+    public FixedShiftResponse getMyFixedShiftConfig(UUID memberId, UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        CompanyMember cm = companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId)
+                .orElseThrow(() -> new IllegalStateException("해당 매장에 속한 멤버가 아닙니다."));
+
+        Member member = cm.getMember();
+
+        // 이 멤버의 고정 근무 패턴 조회
+        List<FixedShift> shifts = fixedShiftRepository.findByCompanyIdAndMemberId(companyId, member.getId());
+
+        List<FixedShiftItemResponse> itemResponses = shifts.stream()
+                .map(FixedShiftItemResponse::from)
+                .toList();
+
+        boolean fixed = cm.isFixedShiftWorker();
+
+        return buildFixedShiftResponse(cm, fixed, itemResponses);
     }
 
     /**

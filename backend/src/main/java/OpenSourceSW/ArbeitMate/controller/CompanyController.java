@@ -4,6 +4,7 @@ import OpenSourceSW.ArbeitMate.dto.request.*;
 import OpenSourceSW.ArbeitMate.dto.response.*;
 import OpenSourceSW.ArbeitMate.security.AuthPrincipal;
 import OpenSourceSW.ArbeitMate.service.CompanyService;
+import OpenSourceSW.ArbeitMate.service.ScheduleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class CompanyController {
 
     private final CompanyService companyService;
+    private final ScheduleService scheduleService;
 
     /**
      * 회사 생성
@@ -148,5 +150,29 @@ public class CompanyController {
             @Valid @RequestBody AssignRoleRequest req) {
         companyService.assignRoleToWorker(principal.memberId(), companyId, companyMemberId, req.getRoleIds());
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    /**
+     * 본인 역할 조회 (직원)
+     */
+    @GetMapping("/{companyId}/me/roles")
+    public ResponseEntity<List<CompanyRoleResponse>> getMyRoles(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId) {
+
+        var res = companyService.getMyRoles(principal.memberId(), companyId);
+        return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 본인 고정 근무 설정 조회 (직원)
+     */
+    @GetMapping("/{companyId}/me/fixed-shift")
+    public ResponseEntity<FixedShiftResponse> getMyFixedShift(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId) {
+
+        var res = scheduleService.getMyFixedShiftConfig(principal.memberId(), companyId);
+        return ResponseEntity.ok(res);
     }
 }
