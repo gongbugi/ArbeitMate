@@ -1,135 +1,240 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
+  FlatList,
 } from "react-native";
-import { ArrowLeft } from "lucide-react-native";
-import axios from "axios";
-
-const BASE_URL = "http://<백엔드-서버-IP>:8080";
+import { ArrowLeft, ChevronDown } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import client from "../../services/api";
 
 export default function E_WorkerTimeUpdateScreen({ navigation, route }) {
-    const { workerId } = route.params;
-    const [time, setTime] = useState("");
-    const [day, setDay] = useState("");
+  const { workerId, fixedTime } = route.params;
 
-    const saveTime = async () => {
-        try {
-            await axios.post(`${BASE_URL}/worker/${workerId}/fixed-time`, {
-                time,
-                day,
-            });
+  
+  const [dayOfWeek, setDayOfWeek] = useState(fixedTime?.day ?? "");
+  const [startTime, setStartTime] = useState(fixedTime?.startTime ?? "");
+  const [endTime, setEndTime] = useState(fixedTime?.endTime ?? "");
+  const [dayModalVisible, setDayModalVisible] = useState(false);
+  const [timeModalVisible, setTimeModalVisible] = useState(null); // "start" | "end"
 
-            alert("등록되었습니다!");
-            navigation.goBack();
-        } catch (err) {
-            console.log("등록 오류:", err);
+  const days = ["월", "화", "수", "목", "금", "토", "일"];
+
+  const timeOptions = Array.from({ length: 16 }, (_, i) => {
+    const hour = 7 + i; // 7~22
+    return `${String(hour).padStart(2, "0")}:00`;
+  });
+
+  /* ------- 저장 API ------- */
+  const saveTime = async () => {
+    if (!dayOfWeek || !startTime || !endTime) {
+      alert("요일, 시작/종료 시간을 모두 선택하세요.");
+      return;
+    }
+
+    try {
+      const companyId = await AsyncStorage.getItem("currentCompanyId");
+
+      await client.put(
+        `/companies/${companyId}/workers/${workerId}/fixed-times/${fixedTime.id}`,
+        {
+          day: dayOfWeek,
+          startTime,
+          endTime,
         }
-    };
+      );
 
-    return (
-        <View style={styles.container}>
+      alert("근무 시간이 수정되었습니다.");
+      navigation.goBack();
+    } catch (err) {
+      console.log("근무 시간 수정 오류:", err);
+      alert("수정 실패");
+    }
+  };
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <ArrowLeft size={28} color="#000" />
-                </TouchableOpacity>
+  /* ------- 렌더링 ------- */
 
-                <Text style={styles.headerTitle}>근무 시간 등록</Text>
+  const renderTimeOption = (time, target) => (
+    <TouchableOpacity
+      key={time}
+      style={styles.optionItem}
+      onPress={() => {
+        target === "start" ? setStartTime(time) : setEndTime(time);
+        setTimeModalVisible(null);
+      }}
+    >
+      <Text style={styles.optionText}>{time}</Text>
+    </TouchableOpacity>
+  );
 
-                <View style={{ width: 28 }} />
-            </View>
+  return (
+    <View style={styles.container}>
 
-            {/* 시간 */}
-            <Text style={styles.label}>시간</Text>
-            <View style={styles.box}>
-                <TextInput
-                    placeholder="예: 12:00 - 14:00"
-                    value={time}
-                    onChangeText={setTime}
-                    style={styles.input}
-                />
-            </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <ArrowLeft size={28} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>근무 시간 수정</Text>
+        <View style={{ width: 28 }} />
+      </View>
 
-            {/* 요일 */}
-            <Text style={styles.label}>요일</Text>
-            <View style={styles.box}>
-                <TextInput
-                    placeholder="예: 월"
-                    value={day}
-                    onChangeText={setDay}
-                    style={styles.input}
-                />
-            </View>
+      {/* 요일 선택 */}
+      <Text style={styles.label}>요일</Text>
+      <TouchableOpacity
+        style={styles.selector}
+        onPress={() => setDayModalVisible(true)}
+      >
+        <Text style={styles.selectorText}>{dayOfWeek || "요일 선택"}</Text>
+        <ChevronDown size={20} color="#666" />
+      </TouchableOpacity>
 
-            {/* 등록 버튼 */}
-            <TouchableOpacity style={styles.saveBtn}>
-                <Text style={styles.saveText}>등록</Text>
-            </TouchableOpacity>
+      {/* 시간 선택 */}
+      <Text style={styles.label}>근무 시간</Text>
+
+      <View style={styles.timeRow}>
+        {/* 시작 */}
+        <TouchableOpacity
+          style={[styles.selector, { flex: 1 }]}
+          onPress={() => setTimeModalVisible("start")}
+        >
+          <Text style={styles.selectorText}>
+            {startTime || "시작 시간"}
+          </Text>
+          <ChevronDown size={20} color="#666" />
+        </TouchableOpacity>
+
+        <Text style={{ marginHorizontal: 8, fontSize: 16 }}>~</Text>
+
+        {/* 종료 */}
+        <TouchableOpacity
+          style={[styles.selector, { flex: 1 }]}
+          onPress={() => setTimeModalVisible("end")}
+        >
+          <Text style={styles.selectorText}>
+            {endTime || "종료 시간"}
+          </Text>
+          <ChevronDown size={20} color="#666" />
+        </TouchableOpacity>
+      </View>
+
+      {/* 저장 버튼 */}
+      <TouchableOpacity style={styles.saveBtn} onPress={saveTime}>
+        <Text style={styles.saveText}>저장</Text>
+      </TouchableOpacity>
+
+      {/* 요일 선택 모달 */}
+      <Modal transparent visible={dayModalVisible} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            {days.map((d) => (
+              <TouchableOpacity
+                key={d}
+                style={styles.optionItem}
+                onPress={() => {
+                  setDayOfWeek(d);
+                  setDayModalVisible(false);
+                }}
+              >
+                <Text style={styles.optionText}>{d}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-    );
+      </Modal>
+
+      {/* 시간 선택 모달 */}
+      <Modal transparent visible={!!timeModalVisible} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <FlatList
+              data={timeOptions}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => renderTimeOption(item, timeModalVisible)}
+            />
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
 }
 
+/* ------- 스타일 ------- */
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#E7E7E8",
-        paddingHorizontal: 24,
-        paddingTop: 60,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: "#f8f8fb",
+    paddingHorizontal: 20,
+    paddingTop: 60,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 24,
+    alignItems: "center",
+  },
+  headerTitle: { fontSize: 20, fontWeight: "bold" },
 
-    /* Header */
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 40,
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: "bold",
-        color: "#000",
-    },
+  label: {
+    marginTop: 16,
+    marginBottom: 6,
+    color: "#555",
+    fontSize: 14,
+  },
 
-    /* Labels */
-    label: {
-        fontSize: 18,
-        fontWeight: "600",
-        color: "#000",
-        marginBottom: 10,
-        marginTop: 10,
-    },
+  selector: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#f3f4f6",
+    padding: 14,
+    borderRadius: 12,
+  },
+  selectorText: {
+    fontSize: 16,
+    color: "#111",
+  },
 
-    /* Input box */
-    box: {
-        backgroundColor: "#fff",
-        height: 52,
-        borderRadius: 28,
-        justifyContent: "center",
-        paddingHorizontal: 20,
-        marginBottom: 20,
-    },
-    input: {
-        fontSize: 16,
-        color: "#000",
-    },
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
 
-    /* 등록 버튼 */
-    saveBtn: {
-        backgroundColor: "#000",
-        height: 60,
-        borderRadius: 30,
-        justifyContent: "center",
-        alignItems: "center",
-        marginTop: 80,
-    },
-    saveText: {
-        color: "#fff",
-        fontSize: 20,
-        fontWeight: "bold",
-    },
+  saveBtn: {
+    backgroundColor: "#000",
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 40,
+  },
+  saveText: {
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalBox: {
+    backgroundColor: "#fff",
+    width: "70%",
+    maxHeight: "60%",
+    borderRadius: 14,
+    paddingVertical: 10,
+  },
+
+  optionItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  optionText: {
+    fontSize: 16,
+    color: "#111",
+  },
 });

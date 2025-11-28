@@ -1,8 +1,44 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
-import { ChevronRight, Bell, UserCircle, Home } from "lucide-react-native";
+import { ChevronRight, Bell, Home } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import client from "../../services/api";
 
 export default function E_HomeScreen({ navigation }) {
+  const [unpaid, setUnpaid] = useState(0);
+
+  useEffect(() => {
+    loadUnpaidSalary();
+  }, []);
+
+  /*  지급해야 할 금액 불러오기 */
+  const loadUnpaidSalary = async () => {
+    try {
+      const companyId = await AsyncStorage.getItem("currentCompanyId");
+      if (!companyId) return;
+
+      
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+
+      const res = await client.get(`/companies/${companyId}/salary`, {
+        params: { year, month }
+      });
+
+      // 실제 필드명에 따라 맞추면 됨
+      setUnpaid(res.data?.unpaidSalaryTotal ?? 0);
+
+    } catch (err) {
+      console.log("급여 요약 조회 실패:", err?.response || err);
+      setUnpaid(0);
+    }
+  };
+
+  /** 금액 1,000 단위 포맷 */
+  const formatMoney = (num) =>
+    (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
   return (
     <View style={styles.container}>
 
@@ -26,55 +62,40 @@ export default function E_HomeScreen({ navigation }) {
 
         {/* 공지사항 */}
         <TouchableOpacity style={styles.menuCard}
-        onPress={() => navigation.navigate("E_NoticeScreen")}>
+          onPress={() => navigation.navigate("E_NoticeScreen")}
+        >
           <Text style={styles.menuText}>공지사항</Text>
           <ChevronRight size={32} color="#999" />
         </TouchableOpacity>
 
         {/* 근무 관리 */}
         <TouchableOpacity style={styles.menuCard}
-        onPress={() => navigation.navigate("E_ScheduleManageScreen")}>
+          onPress={() => navigation.navigate("E_ScheduleManageScreen")}
+        >
           <Text style={styles.menuText}>근무 관리</Text>
           <ChevronRight size={32} color="#999" />
         </TouchableOpacity>
 
-        {/* 급여 관리 */}
-        <TouchableOpacity style={styles.menuCard}
-        onPress={() => navigation.navigate("E_PayScreen")}>
-          <Text style={styles.menuText}>급여 관리</Text>
-          <ChevronRight size={32} color="#999" />
-        </TouchableOpacity>
-
-        {/* 지급해야 할 돈 박스 */}
-        <View style={styles.moneyBox}>
-          <View style={styles.moneyRow}>
-            <Text style={styles.moneyLabel}>지급해야 할 돈</Text>
-            <Text style={styles.moneyValue}>- 50,000 원</Text>
-          </View>
-        </View>
-
         {/* 근무자 */}
         <TouchableOpacity style={styles.menuCard}
-        onPress={() => navigation.navigate("E_WorkerManageScreen")}>
+          onPress={() => navigation.navigate("E_WorkerManageScreen")}
+        >
           <Text style={styles.menuText}>근무자</Text>
           <ChevronRight size={32} color="#999" />
         </TouchableOpacity>
 
-        {/* 인원 정보 */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
+        {/* 급여 관리 (맨 아래 메뉴) */}
+        <TouchableOpacity style={styles.menuCard}
+          onPress={() => navigation.navigate("E_PayListScreen")}
+        >
+          <Text style={styles.menuText}>급여 관리</Text>
+          <ChevronRight size={32} color="#999" />
+        </TouchableOpacity>
 
-            <View style={styles.infoItem}>
-              <Text style={styles.infoNumber}>2</Text>
-              <Text style={styles.infoLabel}>현재 인원</Text>
-            </View>
-
-            <View style={styles.infoItem}>
-              <Text style={styles.infoNumber}>1</Text>
-              <Text style={styles.infoLabel}>승인 대기</Text>
-            </View>
-
-          </View>
+        {/* 지급해야 할 돈 요약 박스 */}
+        <View style={styles.moneySummaryBox}>
+          <Text style={styles.moneyTitle}>지급해야 할 돈</Text>
+          <Text style={styles.moneyAmount}>- {formatMoney(unpaid)} 원</Text>
         </View>
 
       </ScrollView>
@@ -89,8 +110,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 64,
   },
-
-  // Header
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -100,14 +119,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#000",
   },
   headerIcons: {
     flexDirection: "row",
     gap: 16,
   },
-
-  // Menu card
   menuCard: {
     backgroundColor: "#fff",
     borderRadius: 24,
@@ -120,53 +136,25 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 22,
-    color: "#000",
   },
 
-  // Money box
-  moneyBox: {
-    backgroundColor: "#fecaca",
-    borderRadius: 20,
+  /** 요약 박스 */
+  moneySummaryBox: {
+    backgroundColor: "#fee2e2",
     padding: 20,
-    marginBottom: 16,
-    elevation: 3,
-  },
-  moneyRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  moneyLabel: {
-    fontSize: 18,
-  },
-  moneyValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#dc2626",
-  },
-
-  // Info card
-  infoCard: {
-    backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 24,
-    elevation: 3,
+    borderRadius: 16,
     marginBottom: 40,
   },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  infoItem: {
-    alignItems: "center",
-  },
-  infoNumber: {
-    fontSize: 48,
-    fontWeight: "bold",
-  },
-  infoLabel: {
-    marginTop: 8,
+  moneyTitle: {
     fontSize: 18,
+    color: "#b91c1c",
+    fontWeight: "600",
+  },
+  moneyAmount: {
+    fontSize: 22,
     fontWeight: "bold",
+    color: "#dc2626",
+    marginTop: 4,
+    textAlign: "right",
   },
 });

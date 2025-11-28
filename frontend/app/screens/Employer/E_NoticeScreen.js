@@ -7,13 +7,25 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
-import { ArrowLeft, Bell } from "lucide-react-native";
+
+import { ArrowLeft, Bell, PlusCircle, } from "lucide-react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import client from "../../services/api"; 
+import client from "../../services/api";
+
+
 
 export default function E_NoticeScreen({ navigation }) {
   const [notices, setNotices] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadNotices();
+    }, [])
+  );
+
+
 
   useEffect(() => {
     loadNotices();
@@ -32,7 +44,11 @@ export default function E_NoticeScreen({ navigation }) {
     }
   };
 
+
+
+=======
   
+
   const formatDate = (isoString) => {
     if (!isoString) return "";
     const date = new Date(isoString);
@@ -76,7 +92,7 @@ export default function E_NoticeScreen({ navigation }) {
 
         {/* 사장만 작성 가능 */}
         <TouchableOpacity onPress={() => navigation.navigate("E_NoticeAddScreen")}>
-          <Bell size={28} color="#000" />
+          <PlusCircle size={28} color="#000" />
         </TouchableOpacity>
       </View>
 

@@ -4,9 +4,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import E_HomeScreen from "../screens/Employer/E_HomeScreen.js";
 import E_NoticeScreen from "../screens/Employer/E_NoticeScreen.js";
 import E_NoticeAddScreen from "../screens/Employer/E_NoticeAddScreen.js";
-import E_PayScreen from "../screens/Employer/E_PayScreen.js";
+import E_PayDetailScreen from "../screens/Employer/E_PayDetailScreen.js";
+import E_PayListScreen from "../screens/Employer/E_PayListScreen.js";
 import E_ScheduleManageScreen from "../screens/Employer/E_ScheduleManageScreen.js";
-import E_ShiftRequestListScreen from "../screens/Employer/E_ShiftRequestListScreen.js";
+import E_SwapRequestListScreen from "../screens/Employer/E_SwapRequestListScreen.js";
 import E_ScheduleAutoAddPeriodScreen from "../screens/Employer/E_ScheduleAutoAddPeriodScreen.js";
 import E_ScheduleAutoAddPeriodSelectScreen from "../screens/Employer/E_ScheduleAutoAddPeriodSelectScreen.js";
 import E_ScheduleAutoAddScreen from "../screens/Employer/E_ScheduleAutoAddScreen.js";
@@ -20,6 +21,10 @@ import E_WorkerManageScreen from "../screens/Employer/E_WorkerManageScreen.js";
 import E_WorkerTimeScreen from "../screens/Employer/E_WorkerTimeScreen.js";
 import E_WorkerTimeUpdateScreen from "../screens/Employer/E_WorkerTimeUpdateScreen.js";
 import E_WorkerUpdateScreen from "../screens/Employer/E_WorkerUpdateScreen.js";
+import E_ScheduleMainScreen from "../screens/Employer/E_ScheduleMainScreen.js";
+import ScheduleDetailModal from "../screens/Employer/ScheduleDetailModal.js";
+import SwapDetailModal from "../screens/Employer/SwapDetailModal.js";
+import E_NoticeDetetailScreen from "../screens/Employer/E_NoticeDetetailScreen.js";
 
 const Stack = createNativeStackNavigator();
 
@@ -28,10 +33,11 @@ export default function E_Navigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="E_HomeScreen" component={E_HomeScreen} />
       <Stack.Screen name="E_NoticeScreen" component={E_NoticeScreen} />
-      <Stack.Screen name="E_PayScreen" component={E_PayScreen} />
+      <Stack.Screen name="E_PayDetailScreen" component={E_PayDetailScreen} />
+      <Stack.Screen name="E_PayListScreen" component={E_PayListScreen} />
       <Stack.Screen name="E_NoticeAddScreen" component={E_NoticeAddScreen} />
       <Stack.Screen name="E_ScheduleManageScreen" component={E_ScheduleManageScreen} />
-      <Stack.Screen name="E_ShiftRequestListScreen" component={E_ShiftRequestListScreen} />
+      <Stack.Screen name="E_SwapRequestListScreen" component={E_SwapRequestListScreen} />
       <Stack.Screen name="E_ScheduleAutoAddPeriodScreen" component={E_ScheduleAutoAddPeriodScreen} />
       <Stack.Screen name="E_ScheduleAutoAddPeriodSelectScreen" component={E_ScheduleAutoAddPeriodSelectScreen} />
       <Stack.Screen name="E_ScheduleAutoAddScreen" component={E_ScheduleAutoAddScreen} />
@@ -45,6 +51,10 @@ export default function E_Navigator() {
       <Stack.Screen name="E_WorkerTimeScreen" component={E_WorkerTimeScreen} />
       <Stack.Screen name="E_WorkerTimeUpdateScreen" component={E_WorkerTimeUpdateScreen} />
       <Stack.Screen name="E_WorkerUpdateScreen" component={E_WorkerUpdateScreen} />
+      <Stack.Screen name="E_ScheduleMainScreen" component={E_ScheduleMainScreen} />
+      <Stack.Screen name="ScheduleDetailModal" component={ScheduleDetailModal} />
+      <Stack.Screen name="SwapDetailModal" component={SwapDetailModal} />
+      <Stack.Screen name="E_NoticeDetetailScreen" component={E_NoticeDetetailScreen} />
       {/* 필요 스크린 계속 추가 */}
     </Stack.Navigator>
   );

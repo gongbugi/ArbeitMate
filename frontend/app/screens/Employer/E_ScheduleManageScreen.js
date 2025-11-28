@@ -25,7 +25,7 @@ export default function WorkManageScreen({ navigation }) {
 
         {/* 근무표 조회 */}
         <TouchableOpacity style={styles.card}
-        onPress={() => navigation.navigate("ScheduleScreen")}>
+        onPress={() => navigation.navigate("E_ScheduleMainScreen")}>
           <Text style={styles.cardTitle}>근무표 조회</Text>
           <ChevronRight size={28} color="#555" />
         </TouchableOpacity>
@@ -39,7 +39,7 @@ export default function WorkManageScreen({ navigation }) {
 
         {/* 근무 교환 요청 조회 */}
         <TouchableOpacity style={styles.card}
-        onPress={() => navigation.navigate("E_ShiftRequestListScreen")}>
+        onPress={() => navigation.navigate("E_SwapRequestListScreen")}>
           <Text style={styles.cardTitleSmall}>근무 교환 요청 조회</Text>
           <ChevronRight size={28} color="#555" />
         </TouchableOpacity>

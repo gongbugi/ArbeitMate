@@ -1,200 +1,237 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
-import { ArrowLeft } from "lucide-react-native";
-import axios from "axios";
-
-const BASE_URL = "http://<백엔드-서버-IP>:8080";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
+import { ArrowLeft, ChevronRight, ChevronDown, X } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import client from "../../services/api";
 
 export default function E_WorkerUpdateScreen({ navigation, route }) {
-    const { workerId } = route.params;
-    const [worker, setWorker] = useState(null);
+  const { workerId } = route.params; 
 
-    useEffect(() => {
-        loadWorker();
-    }, []);
+  const [roles, setRoles] = useState([]);
+  const [worker, setWorker] = useState(null);
+  const [roleModal, setRoleModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-    const loadWorker = async () => {
-        try {
-            const res = await axios.get(`${BASE_URL}/worker/${workerId}`);
-            setWorker(res.data);
-        } catch (err) {
-            console.log("근무자 상세 정보 오류:", err);
-        }
-    };
+  
+  useEffect(() => {
+    loadWorker();
+    loadRoles();
+  }, []);
 
-    const saveWorker = async () => {
-        try {
-            await axios.put(`${BASE_URL}/worker/${workerId}`, worker);
-            alert("저장되었습니다.");
-            navigation.goBack();
-        } catch (err) {
-            console.log("근무자 정보 저장 오류:", err);
-        }
-    };
+  const loadWorker = async () => {
+    try {
+      const res = await client.get(`/worker/${workerId}`);
+      setWorker(res.data);
+    } catch (err) {
+      console.log("근무자 조회 실패:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    if (!worker) return <ActivityIndicator size="large" style={{ marginTop: 100 }} />;
+  const loadRoles = async () => {
+    try {
+      const companyId = await AsyncStorage.getItem("currentCompanyId");
+      const res = await client.get(`/companies/${companyId}/roles`);
+      setRoles(res.data);
+    } catch (err) {
+      console.log("역할 조회 실패:", err);
+    }
+  };
+
+ 
+  const saveWorker = async () => {
+    try {
+      await client.put(`/worker/${workerId}`, worker);
+      alert("저장되었습니다.");
+      navigation.goBack();
+    } catch (err) {
+      console.log("수정 실패:", err);
+      alert("저장 실패");
+    }
+  };
+
+  if (loading || !worker) {
     return (
-        <View style={styles.container}>
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
 
-            {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    <ArrowLeft size={28} color="#000" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>근무자 관리</Text>
-                <View style={{ width: 28 }} />
-            </View>
+  return (
+    <View style={styles.container}>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <ArrowLeft size={30} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>근무자 관리</Text>
+        <View style={{ width: 30 }} />
+      </View>
 
-                {/* 이름 */}
-                <Text style={styles.sectionLabel}>이름</Text>
-                <View style={styles.box}>
-                    <Text style={styles.boxText}>김XX</Text>
-                </View>
+      {/* 이름 */}
+      <Text style={styles.label}>이름</Text>
+      <TextInput
+        style={styles.input}
+        value={worker.name}
+        onChangeText={(t) => setWorker({ ...worker, name: t })}
+      />
 
-                {/* 담당 업무 */}
-                <Text style={styles.sectionLabel}>담당 업무</Text>
-                <View style={styles.box}>
-                    <Text style={styles.boxText}>서빙</Text>
-                </View>
+      {/* 담당 업무 */}
+      <Text style={styles.label}>담당 업무</Text>
+      <TouchableOpacity
+        style={styles.selector}
+        onPress={() => setRoleModal(true)}
+      >
+        <Text style={styles.selectorText}>
+          {roles.find((r) => r.roleId === worker.roleId)?.name ?? "선택"}
+        </Text>
+        <ChevronDown size={20} color="#666" />
+      </TouchableOpacity>
 
-                {/* 시급 */}
-                <Text style={styles.sectionLabel}>시급</Text>
-                <View style={styles.box}>
-                    <View style={styles.rowBetween}>
-                        <Text style={styles.boxText}>12,500</Text>
-                        <Text style={styles.unitText}>원</Text>
-                    </View>
-                </View>
+      {/* 시급 */}
+      <Text style={styles.label}>시급</Text>
+      <TextInput
+        style={styles.input}
+        keyboardType="numeric"
+        value={String(worker.wage)}
+        onChangeText={(t) => setWorker({ ...worker, wage: Number(t) })}
+      />
 
-                {/* 고정 근무 시간 */}
-                <Text style={styles.sectionLabel}>고정 근무 시간</Text>
-                <View style={styles.boxRow}>
-                    <Text style={styles.boxText}>월 12:00 - 14:00</Text>
-                    <TouchableOpacity style={styles.smallIcon}
-                        onPress={() => navigation.navigate("E_WorkerTimeScreen",{ workerId })} />
-                </View>
+      {/* 고정 근무 시간 */}
+      <Text style={styles.label}>고정 근무 시간</Text>
+      <TouchableOpacity
+        style={styles.selector}
+        onPress={() =>
+          navigation.navigate("E_WorkerTimeScreen", {
+            workerId: workerId,
+            fixedTimes: worker.fixedTimes,
+          })
+        }
+      >
+        <Text style={styles.selectorText}>
+          {worker.fixedTimes?.length > 0
+            ? `${worker.fixedTimes[0].weekday} ${worker.fixedTimes[0].start}-${worker.fixedTimes[0].end}`
+            : "등록된 시간이 없습니다."}
+        </Text>
+        <ChevronRight size={20} color="#666" />
+      </TouchableOpacity>
 
-                {/* 근무 가능 시간 */}
-                <Text style={styles.sectionLabel}>근무 가능 시간</Text>
-                <View style={styles.boxLarge}>
-                    <Text style={styles.grayText}>월 12:00 - 14:00</Text>
-                    <Text style={styles.grayText}>화 12:00 - 14:00</Text>
-                </View>
+      {/* 근무 가능 시간 */}
+      <Text style={[styles.label, { marginTop: 20 }]}>근무 가능 시간</Text>
+      <View style={styles.availBox}>
+        {worker.availableTimes?.map((t, idx) => (
+          <Text key={idx} style={styles.availText}>
+            {t.weekday} {t.start}~{t.end}
+          </Text>
+        ))}
+      </View>
 
-            </ScrollView>
+      {/* 저장 */}
+      <TouchableOpacity style={styles.saveBtn} onPress={saveWorker}>
+        <Text style={styles.saveText}>저장</Text>
+      </TouchableOpacity>
 
-            {/* 저장 버튼 */}
-            <TouchableOpacity style={styles.saveBtn}>
-                <Text style={styles.saveText}>저장</Text>
+      {/* 역할 선택 모달 */}
+      {roleModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+
+            <TouchableOpacity
+              style={styles.closeBtn}
+              onPress={() => setRoleModal(false)}
+            >
+              <X size={22} color="#333" />
             </TouchableOpacity>
 
+            {roles.map((r) => (
+              <TouchableOpacity
+                key={r.roleId}
+                style={styles.modalItem}
+                onPress={() => {
+                  setWorker({ ...worker, roleId: r.roleId });
+                  setRoleModal(false);
+                }}
+              >
+                <Text style={styles.modalItemText}>{r.name}</Text>
+              </TouchableOpacity>
+            ))}
+
+          </View>
         </View>
-    );
+      )}
+
+    </View>
+  );
 }
 
+/* Styles */
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: "#E7E7E8",
-        paddingHorizontal: 24,
-        paddingTop: 60,
-    },
+  container: { flex: 1, backgroundColor: "#f4f4f5", padding: 20, paddingTop: 64 },
 
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 40,
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: "bold",
-        color: "#000",
-    },
+  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24 },
+  headerTitle: { fontSize: 20, fontWeight: "bold" },
 
-    /* Section label */
-    sectionLabel: {
-        fontSize: 18,
-        fontWeight: "600",
-        color: "#000",
-        marginBottom: 8,
-        marginTop: 16,
-    },
+  label: { marginTop: 16, marginBottom: 6, fontSize: 14, color: "#555" },
+  input: {
+    backgroundColor: "#fff",
+    padding: 14,
+    borderRadius: 12,
+    fontSize: 15,
+  },
 
-    /* Basic Box */
-    box: {
-        backgroundColor: "#fff",
-        height: 52,
-        borderRadius: 28,
-        justifyContent: "center",
-        paddingHorizontal: 20,
-    },
-    boxText: {
-        fontSize: 18,
-        color: "#000",
-        fontWeight: "500",
-    },
+  selector: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    padding: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  selectorText: { fontSize: 15 },
 
-    /* Row box (for 고정 근무 시간) */
-    boxRow: {
-        backgroundColor: "#fff",
-        height: 52,
-        borderRadius: 28,
-        paddingHorizontal: 20,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-    },
+  availBox: {
+    backgroundColor: "#fff",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  availText: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
 
-    /* Large text box (근무 가능 시간) */
-    boxLarge: {
-        backgroundColor: "#fff",
-        borderRadius: 28,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-    },
+  saveBtn: {
+    backgroundColor: "#000",
+    marginTop: 40,
+    paddingVertical: 16,
+    borderRadius: 16,
+  },
+  saveText: { color: "#fff", textAlign: "center", fontWeight: "bold" },
 
-    rowBetween: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-    },
-
-    unitText: {
-        fontSize: 18,
-        fontWeight: "500",
-        color: "#000",
-    },
-
-    grayText: {
-        fontSize: 16,
-        color: "rgba(0,0,0,0.4)",
-        marginBottom: 6,
-        fontWeight: "500",
-    },
-
-    /* small icon placeholder */
-    smallIcon: {
-        width: 14,
-        height: 24,
-        backgroundColor: "#ccc",
-        borderRadius: 4,
-    },
-
-    /* Save Button */
-    saveBtn: {
-        backgroundColor: "#000",
-        height: 60,
-        borderRadius: 32,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: 20,
-    },
-    saveText: {
-        color: "#fff",
-        fontSize: 22,
-        fontWeight: "bold",
-    },
+  modalOverlay: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalBox: {
+    width: "75%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+  },
+  closeBtn: { alignSelf: "flex-end", marginBottom: 10 },
+  modalItem: { paddingVertical: 12 },
+  modalItemText: { fontSize: 16 },
 });

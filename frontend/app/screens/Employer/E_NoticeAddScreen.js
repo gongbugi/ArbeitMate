@@ -10,7 +10,10 @@ import {
 } from "react-native";
 import { ArrowLeft } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import client from "../../services/api"; // Worker/E 공통 axios 인스턴스
+
+import client from "../../services/api"; 
+
+
 
 export default function E_NoticeAddScreen({ navigation }) {
   const [title, setTitle] = useState("");

@@ -8,6 +8,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -19,7 +22,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable())  // CSRF 비활성화
+                // CORS 설정
+                .cors(cors -> cors.configurationSource(request -> {
+                    CorsConfiguration cfg = new CorsConfiguration();
+                    cfg.setAllowedOriginPatterns(List.of(
+                            "http://localhost:*",
+                            "http://127.0.0.1:3000",
+                            "https://*.ngrok-free.app"
+                    ));
+                    cfg.setAllowCredentials(true);
+                    cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                    cfg.setAllowedHeaders(List.of("*"));
+                    return cfg;
+                }))
+                // CSRF 비활성화
+                .csrf(csrf -> csrf.disable())
+                // 인가 설정
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/swagger", "/swagger-ui.html", "/swagger-ui.html/**", "/swagger-ui/**", "/api-docs", "/api-docs/**", "/v3/api-docs/**")
                         .permitAll()
