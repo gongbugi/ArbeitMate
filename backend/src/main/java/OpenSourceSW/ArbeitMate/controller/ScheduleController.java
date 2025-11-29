@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -137,6 +138,19 @@ public class ScheduleController {
 
         var res = scheduleService.getMemberAvailabilityPattern(principal.memberId(), companyId);
         return ResponseEntity.ok(res);
+    }
+
+    /**
+     * 근무자 희망 근무 요일/시간 개별삭제
+     */
+    @DeleteMapping("/worker/delete-availability/{availabilityId}")
+    public ResponseEntity<Void> deleteMemberAvailabilityPattern(
+            @AuthenticationPrincipal AuthPrincipal principal,
+            @PathVariable UUID companyId,
+            @PathVariable UUID availabilityId) {
+
+        scheduleService.deleteMemberAvailabilityItem(principal.memberId(), companyId, availabilityId);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     /**

@@ -264,6 +264,27 @@ public class CompanyService {
         }
     }
 
+    /**
+     * 직원 본인 역할 조회
+     */
+    public List<CompanyRoleResponse> getMyRoles(UUID memberId, UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found"));
+
+        CompanyMember cm = companyMemberRepository.findByCompanyIdAndMemberId(companyId, memberId)
+                .orElseThrow(() -> new IllegalStateException("해당 매장에 속한 멤버가 아닙니다."));
+
+        // 이 멤버에게 부여된 역할 조회
+        List<CompanyMemberRole> links = companyMemberRoleRepository.findByCompanyIdAndMemberId(companyId, cm.getMember().getId());
+
+        // 역할 중복 제거 후, 역할 정보만 응답 DTO로 변환
+        return links.stream()
+                .map(CompanyMemberRole::getRole)
+                .distinct()
+                .map(CompanyRoleResponse::from)
+                .toList();
+    }
+
     // 중복 확인
     protected boolean isAlreadyJoined(Member member, Company company) {
         return company.getCompanyMembers().stream()

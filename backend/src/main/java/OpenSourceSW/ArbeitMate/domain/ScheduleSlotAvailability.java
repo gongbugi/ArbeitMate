@@ -36,8 +36,9 @@ public class ScheduleSlotAvailability {
     //== 생성 메서드 ==//
     public static ScheduleSlotAvailability willing(Schedule s, Member m) {
         ScheduleSlotAvailability x = new ScheduleSlotAvailability();
-        x.setSchedule(s);
-        x.setMember(m);
+        //x.setSchedule(s);
+        x.schedule = s;
+        x.member = m;
         x.willing = true;
         x.submittedAt = LocalDateTime.now();
         return x;
@@ -46,7 +47,7 @@ public class ScheduleSlotAvailability {
     //== 연관관계 편의 메서드 ==//
     public void setSchedule(Schedule schedule) {
         this.schedule = schedule;
-        if (schedule != null) schedule.addSlotAvailability(this);
+        // if (schedule != null) schedule.addSlotAvailability(this);
     }
     public void setMember(Member member) { this.member = member; }
 }

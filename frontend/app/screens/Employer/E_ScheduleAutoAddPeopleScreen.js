@@ -1,39 +1,96 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { ArrowLeft } from "lucide-react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  FlatList,
+} from "react-native";
+import { ArrowLeft, Trash2 } from "lucide-react-native";
 import AddPeopleModal from "./AddPeopleModal";
 
 export default function E_ScheduleAutoAddPeopleScreen({ navigation, route }) {
-  const { day, period } = route.params;
-  const [visible, setVisible] = useState(false);
+  const {
+    weekdayIndex,
+    weekdayLabel,
+    patterns: initialPatterns = [],
+    onSave,
+  } = route.params;
+
+  const [patterns, setPatterns] = useState(initialPatterns);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const handleAddPattern = (pattern) => {
+    setPatterns((prev) => [...prev, { ...pattern, id: Date.now().toString() }]);
+  };
+
+  const handleRemove = (id) => {
+    setPatterns((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  // 이 화면에서 뒤로 갈 때 부모(요일 화면)에 저장
+  const handleGoBack = () => {
+    if (onSave) {
+      onSave(weekdayIndex, patterns);
+    }
+    navigation.goBack();
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={styles.itemCard}>
+      <View>
+        <Text style={styles.itemTitle}>
+          {item.roleName || "역할 미지정"} {item.requiredHeadCount}명
+        </Text>
+        <Text style={styles.itemTime}>
+          {item.startTime} ~ {item.endTime}
+        </Text>
+      </View>
+      <TouchableOpacity onPress={() => handleRemove(item.id)}>
+        <Trash2 size={20} color="#9ca3af" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ArrowLeft size={32} color="#000" />
+        <TouchableOpacity onPress={handleGoBack}>
+          <ArrowLeft size={28} color="#000" />
         </TouchableOpacity>
-
         <Text style={styles.headerTitle}>근무표 자동 생성</Text>
+        <View style={{ width: 28 }} />
       </View>
 
-      {/* 요일 */}
-      <Text style={styles.dayLabel}>{day}</Text>
+      <Text style={styles.dayTitle}>{weekdayLabel}요일</Text>
 
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <TouchableOpacity
-            style={styles.plusCircle}
-            onPress={() => setVisible(true)}>
-            <Text style={styles.plus}>+</Text>
-          </TouchableOpacity>
-          <Text style={styles.cardTitle}>인원 추가</Text>
-          <AddPeopleModal visible={visible} onClose={() => setVisible(false)} />
-        </View>
-      </View>
+      {/* 패턴 리스트 */}
+      <FlatList
+        data={patterns}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        ListEmptyComponent={
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyText}>아직 추가된 근무 패턴이 없습니다.</Text>
+          </View>
+        }
+        contentContainerStyle={{ paddingVertical: 16 }}
+      />
 
+      {/* 인원 추가 버튼 */}
+      <TouchableOpacity
+        style={styles.addBtn}
+        onPress={() => setModalVisible(true)}
+      >
+        <Text style={styles.addText}>+ 인원 추가</Text>
+      </TouchableOpacity>
+
+      <AddPeopleModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSave={handleAddPattern}
+      />
     </View>
   );
 }
@@ -42,69 +99,60 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f3f4f6",
-    paddingHorizontal: 24,
     paddingTop: 64,
+    paddingHorizontal: 20,
   },
-
-  /* Header */
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 24,
+    justifyContent: "space-between",
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#000",
-    marginLeft: 16,
-  },
-
-  /* 요일 텍스트 */
-  dayLabel: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#000",
-    marginBottom: 16,
   },
-
-  /* Card */
-  card: {
+  dayTitle: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  itemCard: {
+    marginTop: 12,
     backgroundColor: "#fff",
-    borderRadius: 30,
-    padding: 24,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
-
-  row: {
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  itemTime: {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#6b7280",
+  },
+  emptyBox: {
+    marginTop: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    color: "#9ca3af",
+  },
+  addBtn: {
+    marginTop: 16,
+    backgroundColor: "#4f46e5",
+    borderRadius: 28,
+    height: 54,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  plusCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#000",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-
-  plus: {
+  addText: {
     color: "#fff",
-    fontSize: 28,
+    fontSize: 16,
     fontWeight: "bold",
-    lineHeight: 32,
-  },
-
-  cardTitle: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#000",
   },
 });
