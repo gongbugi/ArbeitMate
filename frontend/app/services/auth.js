@@ -2,7 +2,7 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import client from "./api";
 
-const FIREBASE_API_KEY = "AIzaSyBJIHxVbRMiuANe5NYQxZ0sXy6a0dLb7Bg";
+const FIREBASE_API_KEY = "firebase api key";
 
 export async function loginApi(email, password) {
   try {
