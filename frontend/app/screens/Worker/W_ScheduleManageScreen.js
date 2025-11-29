@@ -21,9 +21,9 @@ export default function W_ScheduleManageScreen({ navigation }) {
       </View>
 
       {/* 메뉴 박스 1 */}
-      <TouchableOpacity style={styles.card}>
-        <Text style={styles.cardTextLarge}
-        onPress={() => navigation.navigate("ScheduleScreen")}>근무표 조회</Text>
+      <TouchableOpacity style={styles.card}
+      onPress={() => navigation.navigate("ScheduleScreen")}>
+        <Text style={styles.cardTextLarge}>근무표 조회</Text>
         <ChevronRight size={32} color="#999" />
       </TouchableOpacity>
 
