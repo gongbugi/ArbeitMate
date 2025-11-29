@@ -79,23 +79,18 @@ export default function W_ScheduleCheckScreen({ navigation }) {
         onPress: async () => {
           try {
             const companyId = await AsyncStorage.getItem("currentCompanyId");
-            
-            const newPatterns = patterns.filter(item => 
-              item.memberAvailabilityId !== targetItem.memberAvailabilityId
+
+            await client.delete(
+              `/companies/${companyId}/schedule/worker/delete-availability/${targetItem.memberAvailabilityId}`
             );
 
-            const requestBody = {
-              items: newPatterns.map(p => ({
-                dow: p.dow,
-                startTime: p.startTime,
-                endTime: p.endTime,
-                effectiveFrom: p.effectiveFrom,
-                effectiveTo: p.effectiveTo
-              }))
-            };
+            setPatterns((prevPatterns) => 
+              prevPatterns.filter(
+                (item) => item.memberAvailabilityId !== targetItem.memberAvailabilityId
+              )
+            );
 
-            await client.post(`/companies/${companyId}/schedule/worker/availability-pattern`, requestBody);
-            setPatterns(newPatterns); 
+            Alert.alert("삭제 완료", "해당 근무 시간이 삭제되었습니다.");
 
           } catch (err) {
             console.error("삭제 실패:", err);
