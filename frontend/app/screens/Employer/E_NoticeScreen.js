@@ -43,10 +43,6 @@ export default function E_NoticeScreen({ navigation }) {
       setLoading(false);
     }
   };
-
-
-
-=======
   
 
   const formatDate = (isoString) => {
