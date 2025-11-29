@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="Gradle: org.threeten:threetenbp:1.7.0" type="java-imported" external-system-id="GRADLE">
+    <properties groupId="org.threeten" artifactId="threetenbp" version="1.7.0" baseVersion="1.7.0" />
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/../.gradle/caches/modules-2/files-2.1/org.threeten/threetenbp/1.7.0/8703e893440e550295aa358281db468625bc9a05/threetenbp-1.7.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

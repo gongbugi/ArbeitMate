@@ -77,6 +77,7 @@ public class SalaryService {
                     .endTime(s.getEndTime().toString())
                     .workMinutes((int) minutes)
                     .dailySalary(dailySalary)
+                    .scheduleAssignmentId(sa.getId())
                     .build());
         }
 

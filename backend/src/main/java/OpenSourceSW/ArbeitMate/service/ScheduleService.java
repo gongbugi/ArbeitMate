@@ -42,6 +42,8 @@ public class ScheduleService {
     private final ScheduleSlotAvailabilityRepository scheduleSlotAvailabilityRepository;
     private final AvailabilitySubmissionRepository availabilitySubmissionRepository;
 
+    private final ScheduleAssignmentRepository scheduleAssignmentRepository;
+
     /**
      * 스케쥴 기간 생성 (시작일 / 종료일)
      */
@@ -1501,4 +1503,11 @@ public class ScheduleService {
     }
 
     private record SlotKey(LocalDate date, UUID roleId, LocalTime start, LocalTime end) {}
+
+    public ScheduleResponse getAssignmentDetail(UUID assignmentId) {
+        ScheduleAssignment assignment = scheduleAssignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 근무입니다."));
+
+        return ScheduleResponse.from(assignment.getSchedule());
+    }
 }

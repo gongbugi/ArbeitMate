@@ -320,4 +320,9 @@ public class ScheduleController {
          var res = scheduleService.getMonthlySchedules(companyId, year, month);
         return ResponseEntity.ok(res);
     }
+
+    @GetMapping("/assignments/{assignmentId}")
+    public ResponseEntity<ScheduleResponse> getAssignmentDetail(@PathVariable UUID assignmentId) {
+        return ResponseEntity.ok(scheduleService.getAssignmentDetail(assignmentId));
+    }
 }
