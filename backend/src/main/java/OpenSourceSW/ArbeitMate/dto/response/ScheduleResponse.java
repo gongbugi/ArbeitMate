@@ -23,14 +23,28 @@ public class ScheduleResponse {
     LocalTime endTime;
     int requiredHeadCount;
 
+    @Data
+    @Builder
+    public static class AssignedWorker {
+        private String workerName;          // 이름
+        private UUID memberId;              // 멤버 ID (사용자 식별용)
+        private UUID scheduleAssignmentId;  // ★ 근무 교환 신청할 때 필수!
+    }
+
     int currentHeadCount;
-    List<String> workerNames;
+    
+    // id포함된 리스트
+    List<AssignedWorker> assignedWorkers;
 
     public static ScheduleResponse from(Schedule s) {
 
-        List<String> names = s.getAssignments().stream()
+        List<AssignedWorker> workers = s.getAssignments().stream()
                 .filter(a -> a.getStatus() == AssignmentStatus.ASSIGNED)
-                .map(a -> a.getMember().getName()) // Member의 이름 추출
+                .map(a -> AssignedWorker.builder()
+                        .workerName(a.getMember().getName())
+                        .memberId(a.getMember().getId())
+                        .scheduleAssignmentId(a.getId())
+                        .build())
                 .collect(Collectors.toList());
 
         return ScheduleResponse.builder()
@@ -42,8 +56,8 @@ public class ScheduleResponse {
                 .endTime(s.getEndTime())
                 .requiredHeadCount(s.getRequiredHeadcount())
 
-               .workerNames(names)
-                .currentHeadCount(names.size())
+                .assignedWorkers(workers)
+                .currentHeadCount(workers.size())
                 .build();
     }
 }

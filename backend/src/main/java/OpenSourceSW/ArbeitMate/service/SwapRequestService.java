@@ -23,6 +23,9 @@ public class SwapRequestService {
     private final ScheduleAssignmentRepository scheduleAssignmentRepository;
     private final CompanyRepository companyRepository;
 
+    // 알림 서비스를 주입받습니다.
+    private final NotificationService notificationService;
+
     /**
      * 1. 근무 교환/대타 요청 생성 (알바생)
      */
@@ -38,12 +41,11 @@ public class SwapRequestService {
         ScheduleAssignment fromAssignment = scheduleAssignmentRepository.findById(req.getFromAssignmentId())
                 .orElseThrow(() -> new IllegalArgumentException("내 근무 정보를 찾을 수 없습니다."));
 
-        // 유효성 검사: 내 근무가 맞는지
         if (!fromAssignment.getMember().getId().equals(requesterId)) {
             throw new IllegalArgumentException("본인의 근무만 교환 신청할 수 있습니다.");
         }
 
-        // 대상 근무(To) 조회 (맞교환일 경우)
+        // 대상 근무(To) 조회
         ScheduleAssignment toAssignment = null;
         if (req.getType() == SwapType.DIRECT_SWAP) {
             if (req.getToAssignmentId() == null) {
@@ -69,15 +71,23 @@ public class SwapRequestService {
                 swapRequest = SwapRequest.createGiveAway(company, fromAssignment, requester, targetMember);
             }
         } else {
-            // 맞교환 (무조건 특정 대상 필요)
             if (targetMember == null) {
-                // 맞교환 대상이 명시 안됐으면, toAssignment의 주인으로 자동 설정
                 targetMember = toAssignment.getMember();
             }
             swapRequest = SwapRequest.createDirectSwap(company, fromAssignment, toAssignment, requester, targetMember);
         }
 
-        return swapRequestRepository.save(swapRequest).getId();
+        swapRequestRepository.save(swapRequest);
+
+        // 특정 대상에게 알림 발송 (저장+전송)
+        if (targetMember != null) {
+            String notiTitle = (req.getType() == SwapType.GIVE_AWAY) ? "대타 요청" : "근무 교환 요청";
+            String notiBody = requester.getName() + "님이 근무 변경을 요청했습니다.";
+
+            notificationService.createAndSend(targetMember, notiTitle, notiBody, "SHIFT_CHANGE");
+        }
+
+        return swapRequest.getId();
     }
 
     /**
@@ -91,11 +101,17 @@ public class SwapRequestService {
         SwapRequest request = swapRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("요청 정보를 찾을 수 없습니다."));
 
-        // 도메인 로직 호출 (수락)
         request.accept(accepter);
-
-        // 수락 즉시 '사장님 승인 대기' 상태로 변경
         request.requestOwnerApproval();
+
+        // 사장님에게 승인 요청 알림 발송
+        Member owner = request.getCompany().getOwner(); // 사장님 찾기
+        notificationService.createAndSend(
+                owner,
+                "근무 변경 승인 요청",
+                accepter.getName() + "님이 근무 변경 요청을 수락했습니다. 승인해주세요.",
+                "SHIFT_CHANGE"
+        );
     }
 
     /**
@@ -109,40 +125,40 @@ public class SwapRequestService {
         SwapRequest request = swapRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("요청 정보를 찾을 수 없습니다."));
 
-        // 사장님 권한 체크 (간단히 Company Owner인지 확인)
         if (!request.getCompany().getOwner().getId().equals(ownerId)) {
             throw new IllegalArgumentException("해당 매장의 사장님만 승인할 수 있습니다.");
         }
 
-        // 1) 요청 상태 승인으로 변경
         request.approve(owner);
-
-        // 2) 실제 근무표(ScheduleAssignment) 업데이트
         updateScheduleAssignments(request);
+
+        // 요청자(A)와 수락자(B) 모두에게 완료 알림 발송
+        String message = "근무 변경 요청이 사장님에 의해 승인되었습니다.";
+
+        // A에게 알림
+        notificationService.createAndSend(request.getCreatedBy(), "근무 변경 승인", message, "SHIFT_CHANGE");
+
+        // B에게 알림 (A랑 B가 다를 때만)
+        if (request.getAcceptedMember() != null && !request.getCreatedBy().equals(request.getAcceptedMember())) {
+            notificationService.createAndSend(request.getAcceptedMember(), "근무 변경 승인", message, "SHIFT_CHANGE");
+        }
     }
 
     /**
-     * 실제 근무표 변경 로직 (승인 시 호출)
+     * 실제 근무표 변경 로직
      */
     private void updateScheduleAssignments(SwapRequest request) {
         ScheduleAssignment from = request.getFromAssignment();
-        Member requester = request.getCreatedBy();       // 원래 주인 (A)
-        Member newWorker = request.getAcceptedMember();  // 새로 일할 사람 (B)
+        Member requester = request.getCreatedBy();
+        Member newWorker = request.getAcceptedMember();
 
         if (request.getType() == SwapType.GIVE_AWAY) {
-            // 대타: A의 근무 -> B에게 넘어감
-            // (ScheduleAssignment 엔티티에 setMember 메소드가 있다고 가정)
             from.setMember(newWorker);
         } else if (request.getType() == SwapType.DIRECT_SWAP) {
-            // 맞교환: A의 근무 <-> B의 근무 서로 바꿈
             ScheduleAssignment to = request.getToAssignment();
-
-            // A의 근무에는 B를 넣고
             from.setMember(newWorker);
-            // B의 근무에는 A를 넣음
             to.setMember(requester);
         }
-
     }
 
     /**
@@ -156,8 +172,18 @@ public class SwapRequestService {
         SwapRequest request = swapRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("요청 정보를 찾을 수 없습니다."));
 
-        // 권한 체크는 생략(대상자거나 사장님이거나)
         request.decline(member);
+
+        // 요청자에게 거절 알림 발송
+        // 거절한 사람이 본인이 아닐 때만 알림 (내가 취소한 거면 알림 X)
+        if (!request.getCreatedBy().getId().equals(memberId)) {
+            notificationService.createAndSend(
+                    request.getCreatedBy(),
+                    "근무 변경 거절",
+                    member.getName() + "님이 요청을 거절했습니다.",
+                    "SHIFT_CHANGE"
+            );
+        }
     }
 
     /**
