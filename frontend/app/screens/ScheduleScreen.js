@@ -32,13 +32,6 @@ export default function ScheduleScreen({ navigation }) {
   
   const [isEmployer, setIsEmployer] = useState(false); // 역할 상태 관리
 
-  // 1. 초기 설정: 내 역할 확인 및 데이터 로드
-  useFocusEffect(
-    useCallback(() => {
-      checkRoleAndFetch(currentMonth);
-    }, [currentMonth])
-  );
-
   const checkRoleAndFetch = async (dateString) => {
     setLoading(true);
     try {
@@ -67,6 +60,14 @@ export default function ScheduleScreen({ navigation }) {
       setLoading(false);
     }
   };
+  // 1. 초기 설정: 내 역할 확인 및 데이터 로드
+  useFocusEffect(
+    useCallback(() => {
+      checkRoleAndFetch(currentMonth);
+    }, [currentMonth])
+  );
+
+
 
   // [고용주용] 모든 스케줄 조회
   const fetchAllSchedules = async (companyId, dateString) => {
